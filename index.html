@@ -18,11 +18,14 @@ $(document).ready(function () {
 		
 		let reader = new FileReader();
 		reader.onload = function (event) {
+			let t = performance.now();
 			try {
 				parseWMF(new DataView(event.target.result), canvas);
 			} catch (e) {
 				console.error(e.message);
 			}
+			t = performance.now() - t;
+			$("#exe_time").text(t.toFixed(2) + " (ms)");
 		};
 		reader.onerror = function (event) {
 			console.error(event);
@@ -42,7 +45,7 @@ $(document).ready(function () {
 	<br>
 	<h4>Choose WMF file</h4>
 	<input type="file" id="file" accept="image/x-wmf"/>
-	<h4>Result</h4>
+	<h4>Result <span id="exe_time"></span></h4>
 	<canvas id="canvas" class="img-thumbnail" style=""></canvas>
 </div>
 

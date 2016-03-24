@@ -385,6 +385,7 @@ function parseWMF(dv, canvas) {
 			let sy = dv.getInt16(offset, true); offset += 2;
 			let sx = dv.getInt16(offset, true); offset += 2;
 			//gdi.excludeClipRect(sx, sy, ex, ey);
+			console.log("EXCLUDE_CLIP_RECT (" + ex + ", " + ey + ") (" + sx + ", " + sy + ")");
 			break;
 		}
 		case RECORD_INTERSECT_CLIP_RECT: {
@@ -393,6 +394,7 @@ function parseWMF(dv, canvas) {
 			let sy = dv.getInt16(offset, true); offset += 2;
 			let sx = dv.getInt16(offset, true); offset += 2;
 			//gdi.intersectClipRect(sx, sy, ex, ey);
+			console.log("INTERSECT_CLIP_RECT (" + ex + ", " + ey + ") (" + sx + ", " + sy + ")");
 			break;
 		}
 		case RECORD_ELLIPSE: {
@@ -401,6 +403,7 @@ function parseWMF(dv, canvas) {
 			let sy = dv.getInt16(offset, true); offset += 2;
 			let sx = dv.getInt16(offset, true); offset += 2;
 			//gdi.ellipse(sx, sy, ex, ey);
+			console.log("INTERSECT_ELLIPSE (" + ex + ", " + ey + ") (" + sx + ", " + sy + ")");
 			break;
 		}
 		case RECORD_FLOOD_FILL: {
@@ -408,6 +411,7 @@ function parseWMF(dv, canvas) {
 			let y = dv.getInt16(offset, true); offset += 2;
 			let x = dv.getInt16(offset, true); offset += 2;
 			//gdi.floodFill(x, y, color);
+			console.log("FLOOD_FILL (" + x + ", " + y + ") " + color);
 			break;
 		}
 		case RECORD_FRAME_RGN: {
@@ -652,7 +656,7 @@ function parseWMF(dv, canvas) {
 			//gdi.extTextOut(x, y, options, rect, text, dx);
 			console.log("fillText " + JSON.stringify({x, y, count, text}));
 			// TODO
-			ctx.font = "190pt Times";
+			
 			ctx.fillText(text, x, y);
 			break;
 		}
@@ -810,21 +814,23 @@ function parseWMF(dv, canvas) {
 			let clipPrecision = dv.getInt8(offset, true); offset++;
 			let quality = dv.getInt8(offset, true); offset++;
 			let pitchAndFamily = dv.getInt8(offset, true); offset++;
-			//byte[] faceName = in.readBytes(size * 2 - in.getCount());
-
-			//gdiObject obj = //gdi.createFontIndirect(height, width, escapement, orientation, weight, italic,
-			// 				underline, strikeout, charset, outPrecision, clipPrecision, quality, pitchAndFamily,
-			// 				faceName);
 			
-			/*
-			for (let i = 0; i < objs.length; i++) {
-				if (objs[i] == null) {
-					objs[i] = obj;
+			let faceName = "";
+			let count = size * 2 - 18;
+			for (let i = 0; i < count; i++) {
+				let c = dv.getInt8(offset++, true);
+				if (c == 0) {
 					break;
 				}
+				faceName += String.fromCharCode(c);
 			}
-			*/
-			console.log("CREATE_FONT_INDIRECT");
+			
+			ctx.font = sprintf("%s%d %dpx %s", italic ? "italic " : "" , weight, Math.abs(height), faceName);
+			console.log("CREATE_FONT_INDIRECT " + 
+				JSON.stringify({
+					faceName, height, width, escapement, orientation, weight, italic, underline, strikeout, charset, outPrecision, clipPrecision, quality, pitchAndFamily
+				})
+			);
 			break;
 		}
 		case RECORD_CREATE_BRUSH_INDIRECT: {
