@@ -207,9 +207,8 @@ function parseWMF(dv, canvas) {
 		case RECORD_DIB_CREATE_PATTERN_BRUSH: {
 			let usage = dv.getInt32(offset, true); offset += 4;
 			// TODO
+			let image = new Int8Array(dv.buffer, offset, size * 2 - 4);
 			/*
-			byte[] image = in.readBytes(size * 2 - in.getCount());
-
 			for (let i = 0; i < objs.length; i++) {
 				if (objs[i] == null) {
 					objs[i] = //gdi.dibCreatePatternBrush(image, usage);
@@ -249,7 +248,6 @@ function parseWMF(dv, canvas) {
 		case RECORD_LINE_TO: {
 			let ey = dv.getInt16(offset, true); offset += 2;
 			let ex = dv.getInt16(offset, true); offset += 2;
-			//gdi.lineTo(ex, ey);
 			console.log("LineTo (" + ex + ", " + ey + ")");
 			ctx.lineTo(ex, ey);
 			ctx.stroke();
@@ -258,7 +256,6 @@ function parseWMF(dv, canvas) {
 		case RECORD_MOVE_TO_EX: {
 			let y = dv.getInt16(offset, true); offset += 2;
 			let x = dv.getInt16(offset, true); offset += 2;
-			//gdi.moveToEx(x, y, null);
 			console.log("MoveTo (" + x + ", " + y + ")");
 			ctx.beginPath();
 			ctx.moveTo(x, y);
@@ -294,14 +291,23 @@ function parseWMF(dv, canvas) {
 			break;
 		}
 		case RECORD_POLYGON: {
-			/*
-			Point[] points = new Point[dv.getInt16(offset, true)]; offset += 2;
-			for (let i = 0; i < points.length; i++) {
-				points[i] = new Point(dv.getInt16(offset, true), dv.getInt16(offset, true));
-				offset += 4;
+			let numOfPoints = dv.getInt16(offset, true); offset += 2;
+			
+			ctx.beginPath();
+			
+			let x = dv.getInt16(offset, true); offset += 2;
+			let y = dv.getInt16(offset, true); offset += 2;
+			ctx.moveTo(x, y);
+			
+			for (let i = 1; i < numOfPoints; i++) {
+				x = dv.getInt16(offset, true); offset += 2;
+				y = dv.getInt16(offset, true); offset += 2;
+				ctx.lineTo(x, y);
 			}
-			*/
-			//gdi.polygon(points);
+			
+			ctx.closePath();
+			ctx.fill();
+			
 			console.log("POLYGON");
 			break;
 		}
@@ -402,8 +408,15 @@ function parseWMF(dv, canvas) {
 			let ex = dv.getInt16(offset, true); offset += 2;
 			let sy = dv.getInt16(offset, true); offset += 2;
 			let sx = dv.getInt16(offset, true); offset += 2;
+			
 			//gdi.ellipse(sx, sy, ex, ey);
-			console.log("INTERSECT_ELLIPSE (" + ex + ", " + ey + ") (" + sx + ", " + sy + ")");
+			
+			ctx.beginPath();
+			ctx.ellipse(ex, ey, sx, sy, 0, 0, Math.PI*2);
+			//ctx.strokeStyle = style;
+			ctx.stroke();
+			
+			console.log("ELLIPSE (" + ex + ", " + ey + ") (" + sx + ", " + sy + ")");
 			break;
 		}
 		case RECORD_FLOOD_FILL: {
@@ -483,6 +496,8 @@ function parseWMF(dv, canvas) {
 			let y = dv.getInt16(offset, true); offset += 2;
 			let x = dv.getInt16(offset, true); offset += 2;
 			//gdi.setPixel(x, y, color);
+			ctx.fillStyle = sprintf("#%06X", color);
+			ctx.fillRect(x, y, 1, 1);
 			break;
 		}
 		case RECORD_ROUND_RECT: {
@@ -533,7 +548,7 @@ function parseWMF(dv, canvas) {
 			let dx = dv.getInt16(offset, true); offset += 2;
 			
 			// TODO
-			//byte[] image = in.readBytes(size * 2 - in.getCount());
+			let image = new Int8Array(dv.buffer, offset, size * 2 - 20);
 
 			//gdi.stretchBlt(image, dx, dy, dw, dh, sx, sy, sw, sh, rop);
 			break;
@@ -610,7 +625,7 @@ function parseWMF(dv, canvas) {
 			let dx = dv.getInt16(offset, true); offset += 2;
 
 			// TODO
-			//byte[] image = in.readBytes(size * 2 - in.getCount());
+			let image = new Int8Array(dv.buffer, offset, size * 2 - 16);
 
 			//gdi.bitBlt(image, dx, dy, width, height, sx, sy, rop);
 			break;
@@ -661,9 +676,9 @@ function parseWMF(dv, canvas) {
 			break;
 		}
 		case RECORD_SET_DIBITS_TO_DEVICE: {
-			let colorUse = dv.getUint16(offset, true); offset += 2;;
-			let scanlines = dv.getUint16(offset, true); offset += 2;;
-			let startscan = dv.getUint16(offset, true); offset += 2;;
+			let colorUse = dv.getUint16(offset, true); offset += 2;
+			let scanlines = dv.getUint16(offset, true); offset += 2;
+			let startscan = dv.getUint16(offset, true); offset += 2;
 			let sy = dv.getInt16(offset, true); offset += 2;
 			let sx = dv.getInt16(offset, true); offset += 2;
 			let dh = dv.getInt16(offset, true); offset += 2;
@@ -672,8 +687,8 @@ function parseWMF(dv, canvas) {
 			let dx = dv.getInt16(offset, true); offset += 2;
 
 			// TODO
-			//byte[] image = in.readBytes(size * 2 - in.getCount());
-
+			let image = new Int8Array(dv.buffer, offset, size * 2 - 18);
+			
 			//gdi.setDIBitsToDevice(dx, dy, dw, dh, sx, sy, startscan, scanlines, image, colorUse);
 			break;
 		}
@@ -716,7 +731,7 @@ function parseWMF(dv, canvas) {
 			let dx = dv.getInt16(offset, true); offset += 2;
 
 			// TODO
-			//byte[] image = in.readBytes(size * 2 - in.getCount());
+			let image = new Int8Array(dv.buffer, offset, size * 2 - 20);
 
 			//gdi.dibStretchBlt(image, dx, dy, dw, dh, sx, sy, sw, sh, rop);
 			console.log("DIB_STRETCH_BLT " + JSON.stringify({dx, dy, dw, dh, sx, sy, sw, sh, rop}));
@@ -724,7 +739,7 @@ function parseWMF(dv, canvas) {
 		}
 		case RECORD_STRETCH_DIBITS: {
 			let rop = dv.getUint32(offset, true); offset += 4;
-			let usage = dv.getUint16(offset, true); offset += 2;;
+			let usage = dv.getUint16(offset, true); offset += 2;
 			let sh = dv.getInt16(offset, true); offset += 2;
 			let sw = dv.getInt16(offset, true); offset += 2;
 			let sy = dv.getInt16(offset, true); offset += 2;
@@ -735,14 +750,14 @@ function parseWMF(dv, canvas) {
 			let dx = dv.getInt16(offset, true); offset += 2;
 
 			// TODO
-			//byte[] image = in.readBytes(size * 2 - in.getCount());
+			let image = new Int8Array(dv.buffer, offset, size * 2 - 22);
 
 			//gdi.stretchDIBits(dx, dy, dw, dh, sx, sy, sw, sh, image, usage, rop);
 			console.log("STRETCH_DIBITS " + JSON.stringify({dx, dy, dw, dh, sx, sy, sw, sh, usage, rop}));
 			break;
 		}
 		case RECORD_DELETE_OBJECT: {
-			let objID = dv.getUint16(offset, true); offset += 2;;
+			let objID = dv.getUint16(offset, true); offset += 2;
 			//gdi.deleteObject(objs[objID]);
 			//objs[objID] = null;
 			console.log("DELETE_OBJECT " + objID);
@@ -769,9 +784,8 @@ function parseWMF(dv, canvas) {
 		}
 		case RECORD_CREATE_PATTERN_BRUSH: {
 			// TODO
+			let image = new Int8Array(dv.buffer, offset, size * 2);
 			/*
-			byte[] image = in.readBytes(size * 2 - in.getCount());
-
 			for (let i = 0; i < objs.length; i++) {
 				if (objs[i] == null) {
 					objs[i] = //gdi.createPatternBrush(image);
