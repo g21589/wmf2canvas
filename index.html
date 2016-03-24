@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WMF2Canvas</title>
+<link rel="stylesheet" href="css/bootstrap.min.css">
+<script src="js/jquery.min.js"></script>
+<script src="js/sprintf.min.js"></script>
+<script src="js/wmf.js"></script>
+<script>
+$(document).ready(function () {
+
+	var canvas = document.getElementById("canvas");
+	
+	$("#file").change(function() {
+		
+		let reader = new FileReader();
+		reader.onload = function (event) {
+			try {
+				parseWMF(new DataView(event.target.result), canvas);
+			} catch (e) {
+				console.error(e.message);
+			}
+		};
+		reader.onerror = function (event) {
+			console.error(event);
+		};
+		reader.readAsArrayBuffer(this.files[0]);
+		
+	});
+});
+</script>
+</head>
+
+<body>
+
+<div class="container">
+	<h1>WMF2Canvas<sup>Alpha</sup></h1>
+	<h3>WMF (Windows Metafile)</h3>
+	<br>
+	<h4>Choose WMF file</h4>
+	<input type="file" id="file" accept="image/x-wmf"/>
+	<h4>Result</h4>
+	<canvas id="canvas" class="img-thumbnail" style=""></canvas>
+</div>
+
+<script src="js/bootstrap.min.js"></script>
+
+</body>
+</html>
