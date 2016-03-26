@@ -3,6 +3,13 @@ function UserException(message) {
 	this.name = "UserException";
 }
 
+function Int32ToHexColor(color) {
+	let blue = (color >> 16) & 0xFF;
+	let green = (color >> 8) & 0xFF;
+	let red = color & 0xFF;
+	return sprintf("#%06X", (red << 16) | (green << 8) | blue );
+}
+
 /* -------------------------------------------------------
  * GDI物件主要有五種 用來改變繪圖時的設定 分別是
  * CPen:    用來設定繪圖時所用的 筆觸設定(線)
@@ -235,7 +242,7 @@ function parseWMF(dv, canvas) {
 			let color = dv.getInt32(offset, true); offset += 4;
 			//gdi.setTextColor(color);
 			console.log("SET_TEXT_COLOR");
-			ctx.fillStyle = sprintf("#%06X", color);
+			ctx.fillStyle = Int32ToHexColor(color);
 			break;
 		}
 		case RECORD_OFFSET_VIEWPORT_ORG_EX: {
@@ -460,19 +467,33 @@ function parseWMF(dv, canvas) {
 			break;
 		}
 		case RECORD_POLY_POLYGON: {
-			// TODO
-			/*
-			Point[][] points = new Point[in.readInt16()][];
-			for (let i = 0; i < points.length; i++) {
-				points[i] = new Point[in.readInt16()];
+			
+			let numOfpolygons = dv.getInt16(offset, true); offset += 2;
+			let numOfPoints = new Array(numOfpolygons);
+			for (let i = 0; i < numOfpolygons; i++) {
+				numOfPoints[i] = dv.getInt16(offset, true); offset += 2;
 			}
-			for (let i = 0; i < points.length; i++) {
-				for (let j = 0; j < points[i].length; j++) {
-					points[i][j] = new Point(in.readInt16(), in.readInt16());
+			
+			for (let i = 0; i < numOfpolygons; i++) {
+				
+				ctx.beginPath();
+				
+				let x = dv.getInt16(offset, true); offset += 2;
+				let y = dv.getInt16(offset, true); offset += 2;
+				ctx.moveTo(x, y);
+				
+				for (let j = 1; j < numOfPoints[i]; j++) {
+					x = dv.getInt16(offset, true); offset += 2;
+					y = dv.getInt16(offset, true); offset += 2;
+					ctx.lineTo(x, y);
 				}
+				
+				ctx.closePath();
+				// TODO
+				ctx.fill();
+				
 			}
-			*/
-			//gdi.polyPolygon(points);
+			console.log("RECORD_POLY_POLYGON");
 			break;
 		}
 		case RECORD_EXT_FLOOD_FILL: {
@@ -496,7 +517,7 @@ function parseWMF(dv, canvas) {
 			let y = dv.getInt16(offset, true); offset += 2;
 			let x = dv.getInt16(offset, true); offset += 2;
 			//gdi.setPixel(x, y, color);
-			ctx.fillStyle = sprintf("#%06X", color);
+			ctx.fillStyle = Int32ToHexColor(color);
 			ctx.fillRect(x, y, 1, 1);
 			break;
 		}
@@ -750,8 +771,43 @@ function parseWMF(dv, canvas) {
 			let dx = dv.getInt16(offset, true); offset += 2;
 
 			// TODO
-			let image = new Int8Array(dv.buffer, offset, size * 2 - 22);
+			/*
+			let imageData = new Uint8Array(dv.buffer, offset, size * 2 - 22);
+			let l = imageData.length;
+			
+			// dibToBmp
+			let bmpData = new DataView(new ArrayBuffer(l + 14));
+			bmpData.setUint8(0, 0x42);
+			bmpData.setUint8(1, 0x4D);
+			bmpData.setUint8(2,  l        & 0xff);
+			bmpData.setUint8(3, (l >>  8) & 0xff);
+			bmpData.setUint8(4, (l >> 16) & 0xff);
+			bmpData.setUint8(5, (l >> 24) & 0xff);
 
+			// reserved 1
+			bmpData.setUint8(6, 0x00);
+			bmpData.setUint8(7, 0x00);
+
+			// reserved 2
+			bmpData.setUint8(8, 0x00);
+			bmpData.setUint8(9, 0x00);
+			
+			let bs = "";
+			for (let i=0; i<imageData.length; i++) {
+				bs += String.fromCharCode(imageData[i]);
+			}
+			let base64 = window.btoa(bs);
+			
+			let img = new Image();
+			img.src = "data:image/bmp;base64," + base64;
+			img.onload = function () {
+				ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+			};
+			img.onerror = function (stuff) {
+				console.error("Img Onerror:", stuff);
+			};
+			*/
+			
 			//gdi.stretchDIBits(dx, dy, dw, dh, sx, sy, sw, sh, image, usage, rop);
 			console.log("STRETCH_DIBITS " + JSON.stringify({dx, dy, dw, dh, sx, sy, sw, sh, usage, rop}));
 			break;
@@ -809,9 +865,9 @@ function parseWMF(dv, canvas) {
 				}
 			}
 			*/
-			console.log("CREATE_PEN_INDIRECT");
+			console.log("CREATE_PEN_INDIRECT " + JSON.stringify({style, color, width}));
 			ctx.lineWidth = width;
-			ctx.strokeStyle = sprintf("#%06X", color);
+			ctx.strokeStyle = Int32ToHexColor(color);
 			break;
 		}
 		case RECORD_CREATE_FONT_INDIRECT: {
@@ -859,7 +915,8 @@ function parseWMF(dv, canvas) {
 				}
 			}
 			*/
-			console.log("CREATE_BRUSH_INDIRECT");
+			console.log("CREATE_BRUSH_INDIRECT " + JSON.stringify({style, color, hatch}));
+			ctx.fillStyle = Int32ToHexColor(color);
 			break;
 		}
 		case RECORD_CREATE_RECT_RGN: {
