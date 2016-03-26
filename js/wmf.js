@@ -3,11 +3,133 @@ function UserException(message) {
 	this.name = "UserException";
 }
 
+function drawBmpImage(ctx, base64ImgData, sx, sy, sw, sh, dx, dy, dw, dh, rop) {
+	// TODO: Not implement rop
+	let img = new Image();
+	img.src = "data:image/bmp;base64," + base64ImgData;
+	img.onload = function () {
+		ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+	};
+	img.onerror = function (stuff) {
+		console.error("Img Onerror:", stuff);
+	};
+}
+
+function drawRoundRect(ctx, x, y, width, height, radius, fill, stroke) {
+	if (typeof stroke == 'undefined') {
+		stroke = true;
+	}
+	if (typeof radius === 'undefined') {
+		radius = 5;
+	}
+	if (typeof radius === 'number') {
+		radius = {tl: radius, tr: radius, br: radius, bl: radius};
+	} else {
+		var defaultRadius = {tl: 0, tr: 0, br: 0, bl: 0};
+		for (var side in defaultRadius) {
+			radius[side] = radius[side] || defaultRadius[side];
+		}
+	}
+	ctx.beginPath();
+	ctx.moveTo(x + radius.tl, y);
+	ctx.lineTo(x + width - radius.tr, y);
+	ctx.quadraticCurveTo(x + width, y, x + width, y + radius.tr);
+	ctx.lineTo(x + width, y + height - radius.br);
+	ctx.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height);
+	ctx.lineTo(x + radius.bl, y + height);
+	ctx.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
+	ctx.lineTo(x, y + radius.tl);
+	ctx.quadraticCurveTo(x, y, x + radius.tl, y);
+	ctx.closePath();
+	if (fill) {
+		ctx.fill();
+	}
+	if (stroke) {
+		ctx.stroke();
+	}
+}
+
 function Int32ToHexColor(color) {
 	let blue = (color >> 16) & 0xFF;
 	let green = (color >> 8) & 0xFF;
 	let red = color & 0xFF;
 	return sprintf("#%06X", (red << 16) | (green << 8) | blue );
+}
+
+function Uint8ArrayToBase64(dv) {
+	let bs = "";
+	for (let i=0; i<dv.byteLength; i++) {
+		bs += String.fromCharCode(dv.getUint8(i));
+	}
+	return window.btoa(bs);
+}
+
+function dibToBmp(dib) {
+	
+	let length = dib.length;
+			
+	// dibToBmp
+	let bmpData = new DataView(new ArrayBuffer(length + 14));
+	
+	/* BitmapFileHeader */
+	bmpData.setUint8(0, 0x42);
+	bmpData.setUint8(1, 0x4D);
+	bmpData.setUint8(2,  length        & 0xff);
+	bmpData.setUint8(3, (length >>  8) & 0xff);
+	bmpData.setUint8(4, (length >> 16) & 0xff);
+	bmpData.setUint8(5, (length >> 24) & 0xff);
+
+	// reserved 1
+	bmpData.setUint8(6, 0x00);
+	bmpData.setUint8(7, 0x00);
+
+	// reserved 2
+	bmpData.setUint8(8, 0x00);
+	bmpData.setUint8(9, 0x00);
+	
+	/* BitmapInfoHeader */
+	let biSize = (dib[0] & 0xFF) + ((dib[1] & 0xFF) << 8)
+				+ ((dib[2] & 0xFF) << 16) + ((dib[3] & 0xFF) << 24);
+	// offset
+	let bfOffBits = biSize + 14;
+
+	let biBitCount = (dib[14] & 0xFF) + ((dib[15] & 0xFF) << 8);
+
+	let clrUsed = (dib[32] & 0xFF) + ((dib[33] & 0xFF) << 8)
+				+ ((dib[34] & 0xFF) << 16) + ((dib[35] & 0xFF) << 24);
+
+	switch (biBitCount) {
+	case 1:
+		bfOffBits += (0x1 + 1) * 4;
+		break;
+	case 4:
+		bfOffBits += (0xF + 1) * 4;
+		break;
+	case 8:
+		bfOffBits += (0xFF + 1) * 4;
+		break;
+	case 16:
+		bfOffBits += (clrUsed == 0) ? 0 : (0xFFFF + 1) * 4;
+		break;
+	case 24:
+		bfOffBits += (clrUsed == 0) ? 0 : (0xFFFFFF + 1) * 4;
+		break;
+	case 32:
+		bfOffBits += (clrUsed == 0) ? 0 : (0xFFFFFFFF + 1) * 4;
+		break;
+	}
+
+	bmpData.setUint8(10,  bfOffBits        & 0xFF);
+	bmpData.setUint8(11, (bfOffBits >>  8) & 0xFF);
+	bmpData.setUint8(12, (bfOffBits >> 16) & 0xFF);
+	bmpData.setUint8(13, (bfOffBits >> 24) & 0xFF);
+	
+	// Copy dib data
+	for (let i = 0; i < length; i++) {
+		bmpData.setUint8(14 + i, dib[i]);
+	}
+	
+	return bmpData;
 }
 
 /* -------------------------------------------------------
@@ -347,10 +469,9 @@ function parseWMF(dv, canvas) {
 		case RECORD_SET_WINDOW_EXT_EX: {
 			let height = dv.getInt16(offset, true); offset += 2;
 			let width = dv.getInt16(offset, true); offset += 2;
-			//gdi.setWindowExtEx(width, height, null);
-			console.log("SET_WINDOW_EXT_EX (" + width + ", " + height + ")");
 			canvas.width = width;
 			canvas.height = height;
+			console.log("SET_WINDOW_EXT_EX (" + width + ", " + height + ")");
 			break;
 		}
 		case RECORD_SET_VIEWPORT_ORG_EX: {
@@ -502,6 +623,7 @@ function parseWMF(dv, canvas) {
 			let y = dv.getInt16(offset, true); offset += 2;
 			let x = dv.getInt16(offset, true); offset += 2;
 			//gdi.extFloodFill(x, y, color, type);
+			console.log("EXT_FLOOD_FILL");
 			break;
 		}
 		case RECORD_RECTANGLE: {
@@ -509,7 +631,9 @@ function parseWMF(dv, canvas) {
 			let ex = dv.getInt16(offset, true); offset += 2;
 			let sy = dv.getInt16(offset, true); offset += 2;
 			let sx = dv.getInt16(offset, true); offset += 2;
-			//gdi.rectangle(sx, sy, ex, ey);
+			ctx.rect(sx, sy, ex - sx, ey - sy);
+			ctx.stroke();
+			console.log("RECTANGLE");
 			break;
 		}
 		case RECORD_SET_PIXEL: {
@@ -519,6 +643,7 @@ function parseWMF(dv, canvas) {
 			//gdi.setPixel(x, y, color);
 			ctx.fillStyle = Int32ToHexColor(color);
 			ctx.fillRect(x, y, 1, 1);
+			console.log("SET_PIXEL");
 			break;
 		}
 		case RECORD_ROUND_RECT: {
@@ -528,7 +653,8 @@ function parseWMF(dv, canvas) {
 			let ex = dv.getInt16(offset, true); offset += 2;
 			let sy = dv.getInt16(offset, true); offset += 2;
 			let sx = dv.getInt16(offset, true); offset += 2;
-			//gdi.roundRect(sx, sy, ex, ey, rw, rh);
+			drawRoundRect(ctx, sx, sy, ex - sx, ey - sy, (rh + rw) / 2, false, true);
+			console.log("ROUND_RECT");
 			break;
 		}
 		case RECORD_PAT_BLT: {
@@ -538,6 +664,7 @@ function parseWMF(dv, canvas) {
 			let y = dv.getInt16(offset, true); offset += 2;
 			let x = dv.getInt16(offset, true); offset += 2;
 			//gdi.patBlt(x, y, width, height, rop);
+			console.log("PAT_BLT");
 			break;
 		}
 		case RECORD_SAVE_DC: {
@@ -645,10 +772,10 @@ function parseWMF(dv, canvas) {
 			let dy = dv.getInt16(offset, true); offset += 2;
 			let dx = dv.getInt16(offset, true); offset += 2;
 
-			// TODO
-			let image = new Int8Array(dv.buffer, offset, size * 2 - 16);
-
-			//gdi.bitBlt(image, dx, dy, width, height, sx, sy, rop);
+			let dib = new Uint8Array(dv.buffer, offset, size * 2 - 16);
+			let base64 = Uint8ArrayToBase64(dibToBmp(dib));
+			drawBmpImage(ctx, base64, sx, sy, width, height, dx, dy, width, height, rop);
+				
 			break;
 		}
 		case RECORD_EXT_TEXT_OUT: {
@@ -708,14 +835,12 @@ function parseWMF(dv, canvas) {
 			let dx = dv.getInt16(offset, true); offset += 2;
 
 			// TODO
-			let image = new Int8Array(dv.buffer, offset, size * 2 - 18);
-			
+			//let image = new Int8Array(dv.buffer, offset, size * 2 - 18);
 			//gdi.setDIBitsToDevice(dx, dy, dw, dh, sx, sy, startscan, scanlines, image, colorUse);
 			break;
 		}
 		case RECORD_DIB_BIT_BLT: {
-			// TODO
-			/*
+			
 			let isRop = false;
 
 			let rop = dv.getUint32(offset, true); offset += 4;
@@ -729,15 +854,13 @@ function parseWMF(dv, canvas) {
 			let width = dv.getInt16(offset, true); offset += 2;
 			let dy = dv.getInt16(offset, true); offset += 2;
 			let dx = dv.getInt16(offset, true); offset += 2;
-
-			if (isRop) {
-				//gdi.dibBitBlt(null, dx, dy, width, height, sx, sy, rop);
-			} else {
-				byte[] image = in.readBytes(size * 2 - in.getCount());
-
-				//gdi.dibBitBlt(image, dx, dy, width, height, sx, sy, rop);
+			
+			if (!isRop) {
+				let dib = new Uint8Array(dv.buffer, offset, size * 2 - 16);
+				let base64 = Uint8ArrayToBase64(dibToBmp(dib));
+				drawBmpImage(ctx, base64, sx, sy, width, height, dx, dy, width, height, rop);
 			}
-			*/
+			console.log("DIB_BIT_BLT ");
 			break;
 		}
 		case RECORD_DIB_STRETCH_BLT: {
@@ -751,10 +874,11 @@ function parseWMF(dv, canvas) {
 			let dy = dv.getInt16(offset, true); offset += 2;
 			let dx = dv.getInt16(offset, true); offset += 2;
 
-			// TODO
-			let image = new Int8Array(dv.buffer, offset, size * 2 - 20);
-
-			//gdi.dibStretchBlt(image, dx, dy, dw, dh, sx, sy, sw, sh, rop);
+			let dib = new Uint8Array(dv.buffer, offset, size * 2 - 20);
+			let base64 = Uint8ArrayToBase64(dibToBmp(dib));
+			
+			drawBmpImage(ctx, base64, sx, sy, sw, sh, dx, dy, dw, dh, rop);
+			
 			console.log("DIB_STRETCH_BLT " + JSON.stringify({dx, dy, dw, dh, sx, sy, sw, sh, rop}));
 			break;
 		}
@@ -770,45 +894,11 @@ function parseWMF(dv, canvas) {
 			let dy = dv.getInt16(offset, true); offset += 2;
 			let dx = dv.getInt16(offset, true); offset += 2;
 
-			// TODO
-			/*
-			let imageData = new Uint8Array(dv.buffer, offset, size * 2 - 22);
-			let l = imageData.length;
+			let dib = new Uint8Array(dv.buffer, offset, size * 2 - 22);
+			let base64 = Uint8ArrayToBase64(dibToBmp(dib));
 			
-			// dibToBmp
-			let bmpData = new DataView(new ArrayBuffer(l + 14));
-			bmpData.setUint8(0, 0x42);
-			bmpData.setUint8(1, 0x4D);
-			bmpData.setUint8(2,  l        & 0xff);
-			bmpData.setUint8(3, (l >>  8) & 0xff);
-			bmpData.setUint8(4, (l >> 16) & 0xff);
-			bmpData.setUint8(5, (l >> 24) & 0xff);
-
-			// reserved 1
-			bmpData.setUint8(6, 0x00);
-			bmpData.setUint8(7, 0x00);
-
-			// reserved 2
-			bmpData.setUint8(8, 0x00);
-			bmpData.setUint8(9, 0x00);
+			drawBmpImage(ctx, base64, sx, sy, sw, sh, dx, dy, dw, dh, rop);
 			
-			let bs = "";
-			for (let i=0; i<imageData.length; i++) {
-				bs += String.fromCharCode(imageData[i]);
-			}
-			let base64 = window.btoa(bs);
-			
-			let img = new Image();
-			img.src = "data:image/bmp;base64," + base64;
-			img.onload = function () {
-				ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
-			};
-			img.onerror = function (stuff) {
-				console.error("Img Onerror:", stuff);
-			};
-			*/
-			
-			//gdi.stretchDIBits(dx, dy, dw, dh, sx, sy, sw, sh, image, usage, rop);
 			console.log("STRETCH_DIBITS " + JSON.stringify({dx, dy, dw, dh, sx, sy, sw, sh, usage, rop}));
 			break;
 		}
