@@ -1,3 +1,6 @@
+var Buffer = require('buffer').Buffer;
+var Icnov = require('iconv-lite');
+
 function UserException(message) {
 	this.message = message;
 	this.name = "UserException";
@@ -173,6 +176,30 @@ function dibToBmp(dib) {
 	return bmpData;
 }
 
+function getCharset(charset) {
+	switch (charset) {
+	case   0:	return "Cp1252";
+	case   2:	return "Cp1252";
+	case  77:	return "MacRoman";
+	case 128:	return "MS932";
+	case 129:	return "MS949";
+	case 130:	return "Johab";
+	case 134:	return "MS936";
+	case 136:	return "big5";
+	case 161:	return "Cp1253";
+	case 162:	return "Cp1254";
+	case 163:	return "Cp1258";
+	case 177:	return "Cp1255";
+	case 178:	return "Cp1256";
+	case 186:	return "Cp1257";
+	case 204:	return "Cp1251";
+	case 222:	return "MS874";
+	case 238:	return "Cp1250";
+	case 255:	return "Cp1252";
+	default:	return "Cp1252";
+	}
+}
+
 /* -------------------------------------------------------
  * GDI物件主要有五種 用來改變繪圖時的設定 分別是
  * CPen:    用來設定繪圖時所用的 筆觸設定(線)
@@ -262,6 +289,7 @@ function parseWMF(dv, canvas) {
 	let offset = 0, offset_bk = 0;			
 	let mtType = 0, mtHeaderSize = 0;
 	let orix = 0, oriy = 0;
+	let charset = 0;
 	
 	let key = dv.getUint32(offset, true); offset += 4;
 	if (key == 0x9AC6CDD7) {
@@ -403,8 +431,9 @@ function parseWMF(dv, canvas) {
 		}
 		case RECORD_SET_BK_COLOR: {
 			let color = dv.getInt32(offset, true); offset += 4;
-			//gdi.setBkColor(color);
-			console.log("SET_BK_COLOR");
+			color = Int32ToHexColor(color);
+			ctx.fillStyle = color;
+			console.log("SET_BK_COLOR " + color);
 			break;
 		}
 		case RECORD_SET_TEXT_COLOR: {
@@ -592,11 +621,9 @@ function parseWMF(dv, canvas) {
 			let sy = dv.getInt16(offset, true); offset += 2;
 			let sx = dv.getInt16(offset, true); offset += 2;
 			
-			//gdi.ellipse(sx, sy, ex, ey);
-			
 			ctx.beginPath();
 			ctx.ellipse(ex, ey, sx, sy, 0, 0, Math.PI*2);
-			//ctx.strokeStyle = style;
+			ctx.fill();
 			ctx.stroke();
 			
 			console.log("ELLIPSE (" + ex + ", " + ey + ") (" + sx + ", " + sy + ")");
@@ -668,7 +695,6 @@ function parseWMF(dv, canvas) {
 				}
 				
 				ctx.closePath();
-				// TODO
 				ctx.fill();
 				ctx.stroke();
 				
@@ -860,10 +886,14 @@ function parseWMF(dv, canvas) {
 				rsize -= 4;
 			}
 			
-			let text = "";
+			let buffer = new Buffer(count);
 			for (let i = 0; i < count; i++) {
-				text += String.fromCharCode(dv.getInt8(offset++, true));
+				let c = dv.getInt8(offset++, true);
+				buffer[i] = c;
 			}
+			let text = Icnov.decode(buffer, charset);
+			
+			/*
 			if (count % 2 == 1) {
 				dv.getInt8(offset++, true);
 			}
@@ -877,12 +907,10 @@ function parseWMF(dv, canvas) {
 					offset += 2;
 				}
 			}
-			
-			//gdi.extTextOut(x, y, options, rect, text, dx);
-			console.log("fillText " + JSON.stringify({x, y, count, text}));
-			// TODO
+			*/
 			
 			ctx.fillText(text, x, y);
+			console.log("EXT_TEXT_OUT " + JSON.stringify({x, y, count, text}));
 			break;
 		}
 		case RECORD_SET_DIBITS_TO_DEVICE: {
@@ -1032,12 +1060,25 @@ function parseWMF(dv, canvas) {
 			let italic = (dv.getInt8(offset, true) == 1); offset++;
 			let underline = (dv.getInt8(offset, true) == 1); offset++;
 			let strikeout = (dv.getInt8(offset, true) == 1); offset++;
-			let charset = dv.getInt8(offset, true); offset++;
+			charset = dv.getUint8(offset, true); offset++;
 			let outPrecision = dv.getInt8(offset, true); offset++;
 			let clipPrecision = dv.getInt8(offset, true); offset++;
 			let quality = dv.getInt8(offset, true); offset++;
 			let pitchAndFamily = dv.getInt8(offset, true); offset++;
 			
+			// Convert from an encoded buffer to js string.
+			let count = size * 2 - 18;
+			let buffer = new Buffer(count);
+			for (let i = 0; i < count; i++) {
+				let c = dv.getInt8(offset++, true);
+				if (c == 0) {
+					break;
+				}
+				buffer[i] = c;
+			}
+			charset = getCharset(charset);
+			faceName = Icnov.decode(buffer, charset).replace(/\u0000/g, "");
+			/*
 			let faceName = "";
 			let count = size * 2 - 18;
 			for (let i = 0; i < count; i++) {
@@ -1047,8 +1088,9 @@ function parseWMF(dv, canvas) {
 				}
 				faceName += String.fromCharCode(c);
 			}
+			*/
 			
-			ctx.font = sprintf("%s%d %dpx %s", italic ? "italic " : "" , weight, Math.abs(height), faceName);
+			ctx.font = sprintf("%s%d %dpx '%s'", italic ? "italic " : "" , weight, Math.abs(height), faceName);
 			console.log("CREATE_FONT_INDIRECT " + 
 				JSON.stringify({
 					faceName, height, width, escapement, orientation, weight, italic, underline, strikeout, charset, outPrecision, clipPrecision, quality, pitchAndFamily
