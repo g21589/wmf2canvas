@@ -15,6 +15,47 @@ function drawBmpImage(ctx, base64ImgData, sx, sy, sw, sh, dx, dy, dw, dh, rop) {
 	};
 }
 
+function drawPie(ctx, sxr, syr, exr, eyr, sxa, sya, exa, eya) {
+	
+	let rx = Math.abs(exr - sxr) / 2.0;
+	let ry = Math.abs(eyr - syr) / 2.0;
+	if (rx <= 0 || ry <= 0) {
+		return;
+	}
+
+	let cx = Math.min(sxr, exr) + rx;
+	let cy = Math.min(syr, eyr) + ry;
+	
+	ctx.beginPath();
+	
+	if (sxa == exa && sya == eya) {
+		// Non-Rotate
+		if (rx == ry) {			
+			ctx.arc(cx, cy, rx, 0, 2 * Math.PI);
+		} else {
+			ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+		}
+		
+	} else {
+		// Rotate
+		let sa = Math.atan2((sya - cy) * rx, (sxa - cx) * ry);
+
+		let sx = rx * Math.cos(sa);
+		let sy = ry * Math.sin(sa);
+
+		let ea = Math.atan2((eya - cy) * rx, (exa - cx) * ry);
+		let ex = rx * Math.cos(ea);
+		let ey = ry * Math.sin(ea);
+
+		let a = Math.atan2((ex-sx) * (-sy) - (ey-sy) * (-sx), (ex-sx) * (-sx) + (ey-sy) * (-sy));
+		
+		ctx.ellipse(cx, cy, rx, ry, a, 0, 2 * Math.PI);
+	}
+	
+	ctx.stroke();
+	
+}
+
 function drawRoundRect(ctx, x, y, width, height, radius, fill, stroke) {
 	if (typeof stroke == 'undefined') {
 		stroke = true;
@@ -213,14 +254,18 @@ function parseWMF(dv, canvas) {
 	const RECORD_CREATE_BRUSH_INDIRECT 		= 0x02FC;
 	const RECORD_CREATE_RECT_RGN 			= 0x06FF;
 	
+	canvas.width = 480;
+	canvas.height = 320;
 	var ctx = canvas.getContext("2d");
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	
 	let offset = 0, offset_bk = 0;			
 	let mtType = 0, mtHeaderSize = 0;
+	let orix = 0, oriy = 0;
 	
 	let key = dv.getUint32(offset, true); offset += 4;
 	if (key == 0x9AC6CDD7) {
+		// 可視區域
 		let hmf = dv.getInt16(offset, true); offset += 2;
 		let vsx = dv.getInt16(offset, true); offset += 2;
 		let vsy = dv.getInt16(offset, true); offset += 2;
@@ -234,6 +279,8 @@ function parseWMF(dv, canvas) {
 
 		mtType = dv.getUint16(offset, true); offset += 2;
 		mtHeaderSize = dv.getUint16(offset, true); offset += 2;
+		console.log("Placeable Header " + JSON.stringify({vsx, vsy, vex, vey, dpi}));
+		
 	} else {
 		mtType = (key & 0x0000FFFF);
 		mtHeaderSize = ((key & 0xFFFF0000) >> 16);
@@ -362,9 +409,9 @@ function parseWMF(dv, canvas) {
 		}
 		case RECORD_SET_TEXT_COLOR: {
 			let color = dv.getInt32(offset, true); offset += 4;
-			//gdi.setTextColor(color);
-			console.log("SET_TEXT_COLOR");
-			ctx.fillStyle = Int32ToHexColor(color);
+			color = Int32ToHexColor(color);
+			ctx.fillStyle = color;
+			console.log("SET_TEXT_COLOR " + color);
 			break;
 		}
 		case RECORD_OFFSET_VIEWPORT_ORG_EX: {
@@ -377,17 +424,17 @@ function parseWMF(dv, canvas) {
 		case RECORD_LINE_TO: {
 			let ey = dv.getInt16(offset, true); offset += 2;
 			let ex = dv.getInt16(offset, true); offset += 2;
-			console.log("LineTo (" + ex + ", " + ey + ")");
 			ctx.lineTo(ex, ey);
 			ctx.stroke();
+			console.log("LineTo (" + ex + ", " + ey + ")");
 			break;
 		}
 		case RECORD_MOVE_TO_EX: {
 			let y = dv.getInt16(offset, true); offset += 2;
 			let x = dv.getInt16(offset, true); offset += 2;
-			console.log("MoveTo (" + x + ", " + y + ")");
 			ctx.beginPath();
 			ctx.moveTo(x, y);
+			console.log("MoveTo (" + x + ", " + y + ")");
 			break;
 		}
 		case RECORD_OFFSET_CLIP_RGN: {
@@ -436,6 +483,7 @@ function parseWMF(dv, canvas) {
 			
 			ctx.closePath();
 			ctx.fill();
+			ctx.stroke();
 			
 			console.log("POLYGON");
 			break;
@@ -460,18 +508,25 @@ function parseWMF(dv, canvas) {
 			break;
 		}
 		case RECORD_SET_WINDOW_ORG_EX: {
-			let y = dv.getInt16(offset, true); offset += 2;
-			let x = dv.getInt16(offset, true); offset += 2;
-			//gdi.setWindowOrgEx(x, y, null);
-			console.log("SET_WINDOW_ORG_EX (" + x + ", " + y + ")");
+			oriy = dv.getInt16(offset, true); offset += 2;
+			orix = dv.getInt16(offset, true); offset += 2;
+			ctx.translate(-orix, -oriy);
+			console.warn("SET_WINDOW_ORG_EX (" + orix + ", " + oriy + ")");
 			break;
 		}
 		case RECORD_SET_WINDOW_EXT_EX: {
 			let height = dv.getInt16(offset, true); offset += 2;
 			let width = dv.getInt16(offset, true); offset += 2;
+			
+			let inMemCanvas = document.createElement('canvas');
+			let inMemCtx = inMemCanvas.getContext('2d');
+			inMemCtx.drawImage(canvas, 0, 0);
 			canvas.width = width;
 			canvas.height = height;
-			console.log("SET_WINDOW_EXT_EX (" + width + ", " + height + ")");
+			ctx.drawImage(inMemCanvas, 0, 0);
+			// TODO: Set all old ctx properties
+			ctx.translate(-orix, -oriy);
+			console.warn("SET_WINDOW_EXT_EX (" + width + ", " + height + ")");
 			break;
 		}
 		case RECORD_SET_VIEWPORT_ORG_EX: {
@@ -551,6 +606,7 @@ function parseWMF(dv, canvas) {
 			let color = dv.getInt32(offset, true); offset += 4;
 			let y = dv.getInt16(offset, true); offset += 2;
 			let x = dv.getInt16(offset, true); offset += 2;
+			color = Int32ToHexColor(color);
 			//gdi.floodFill(x, y, color);
 			console.log("FLOOD_FILL (" + x + ", " + y + ") " + color);
 			break;
@@ -602,16 +658,19 @@ function parseWMF(dv, canvas) {
 				let x = dv.getInt16(offset, true); offset += 2;
 				let y = dv.getInt16(offset, true); offset += 2;
 				ctx.moveTo(x, y);
+				//console.log("M " + JSON.stringify({x, y}));
 				
 				for (let j = 1; j < numOfPoints[i]; j++) {
 					x = dv.getInt16(offset, true); offset += 2;
 					y = dv.getInt16(offset, true); offset += 2;
 					ctx.lineTo(x, y);
+					//console.log("L " + JSON.stringify({x, y}));
 				}
 				
 				ctx.closePath();
 				// TODO
 				ctx.fill();
+				ctx.stroke();
 				
 			}
 			console.log("RECORD_POLY_POLYGON");
@@ -622,8 +681,9 @@ function parseWMF(dv, canvas) {
 			let color = dv.getInt32(offset, true); offset += 4;
 			let y = dv.getInt16(offset, true); offset += 2;
 			let x = dv.getInt16(offset, true); offset += 2;
+			color = Int32ToHexColor(color);
 			//gdi.extFloodFill(x, y, color, type);
-			console.log("EXT_FLOOD_FILL");
+			console.log("EXT_FLOOD_FILL " + color);
 			break;
 		}
 		case RECORD_RECTANGLE: {
@@ -632,6 +692,7 @@ function parseWMF(dv, canvas) {
 			let sy = dv.getInt16(offset, true); offset += 2;
 			let sx = dv.getInt16(offset, true); offset += 2;
 			ctx.rect(sx, sy, ex - sx, ey - sy);
+			ctx.fill();
 			ctx.stroke();
 			console.log("RECTANGLE");
 			break;
@@ -640,10 +701,10 @@ function parseWMF(dv, canvas) {
 			let color = dv.getInt32(offset, true); offset += 4;
 			let y = dv.getInt16(offset, true); offset += 2;
 			let x = dv.getInt16(offset, true); offset += 2;
-			//gdi.setPixel(x, y, color);
-			ctx.fillStyle = Int32ToHexColor(color);
+			color = Int32ToHexColor(color);
+			ctx.fillStyle = color;
 			ctx.fillRect(x, y, 1, 1);
-			console.log("SET_PIXEL");
+			console.log("SET_PIXEL (" + x + ", " + y + ", " + color + ")");
 			break;
 		}
 		case RECORD_ROUND_RECT: {
@@ -681,7 +742,8 @@ function parseWMF(dv, canvas) {
 			let ex = dv.getInt16(offset, true); offset += 2;
 			let sy = dv.getInt16(offset, true); offset += 2;
 			let sx = dv.getInt16(offset, true); offset += 2;
-			//gdi.pie(sx, sy, ex, ey, sxr, syr, exr, eyr);
+			
+			drawPie(ctx, sx, sy, ex, ey, sxr, syr, exr, eyr);
 			break;
 		}
 		case RECORD_STRETCH_BLT: {
@@ -955,9 +1017,10 @@ function parseWMF(dv, canvas) {
 				}
 			}
 			*/
-			console.log("CREATE_PEN_INDIRECT " + JSON.stringify({style, color, width}));
+			color = Int32ToHexColor(color);
 			ctx.lineWidth = width;
-			ctx.strokeStyle = Int32ToHexColor(color);
+			ctx.strokeStyle = color;
+			console.log("CREATE_PEN_INDIRECT " + JSON.stringify({style, color, width}));
 			break;
 		}
 		case RECORD_CREATE_FONT_INDIRECT: {
@@ -1005,8 +1068,9 @@ function parseWMF(dv, canvas) {
 				}
 			}
 			*/
+			color = Int32ToHexColor(color);
+			ctx.fillStyle = color;
 			console.log("CREATE_BRUSH_INDIRECT " + JSON.stringify({style, color, hatch}));
-			ctx.fillStyle = Int32ToHexColor(color);
 			break;
 		}
 		case RECORD_CREATE_RECT_RGN: {
