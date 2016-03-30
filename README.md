@@ -6,7 +6,7 @@ Convert WMF (Windows Metafile) image file to HTML5 canvas
 
 Online Demo
 ----
-comming soon
+http://g21589.github.io/wmf2canvas
 
 
 Usage
