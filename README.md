@@ -9,15 +9,29 @@ Online Demo
 comming soon
 
 
-Features
+Usage
 ----
-* Support drawing text and line   
+```html
+<input type="file" id="file" accept="image/x-wmf" />
+<canvas id="canvas"></canvas>
 
+<script>
+let wmf = new WMFConverter();   // new the WMFConverter object
+	
+let canvas = document.getElementById("canvas");
+let file = document.getElementById("file");
+	
+file.onchange = function() {
+	let filename = this.files[0];
+	wmf.toCanvas(filename, canvas); // load the wmf file and convert to canvas graph
+}
+</script>
+```
 
 Version
 ----
 
-Alpha test
+Bets test
 
 
 License

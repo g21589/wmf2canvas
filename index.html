@@ -6,23 +6,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WMF2Canvas</title>
 <link rel="stylesheet" href="css/bootstrap.min.css">
-<script src="js/jquery.min.js"></script>
 <script src="js/sprintf.min.js"></script>
 <script src="js/bundle.js"></script>
 <script src="js/wmf.js"></script>
 <script>
-$(document).ready(function () {
+window.onload = function() {
 	
-	var canvas = document.getElementById("canvas");
+	let wmf = new WMFConverter();
 	
-	$("#file").change(function() {
+	let canvas = document.getElementById("canvas");
+	let file = document.getElementById("file");
 	
-		let converter = new WMFConverter();
-		converter.toCanvas(this.files[0], canvas);
-		$("#exe_time").text(converter.getExeTime().toFixed(2) + " (ms)");
-		
-	});
-});
+	file.onchange = function() {
+		let filename = this.files[0];
+		wmf.toCanvas(filename, canvas);
+	}
+	
+};
 </script>
 </head>
 
