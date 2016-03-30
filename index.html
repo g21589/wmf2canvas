@@ -16,22 +16,10 @@ $(document).ready(function () {
 	var canvas = document.getElementById("canvas");
 	
 	$("#file").change(function() {
-		
-		let reader = new FileReader();
-		reader.onload = function (event) {
-			let t = performance.now();
-			try {
-				parseWMF(new DataView(event.target.result), canvas);
-			} catch (e) {
-				console.error(e.message);
-			}
-			t = performance.now() - t;
-			$("#exe_time").text(t.toFixed(2) + " (ms)");
-		};
-		reader.onerror = function (event) {
-			console.error(event);
-		};
-		reader.readAsArrayBuffer(this.files[0]);
+	
+		let converter = new WMFConverter();
+		converter.toCanvas(this.files[0], canvas);
+		$("#exe_time").text(converter.getExeTime().toFixed(2) + " (ms)");
 		
 	});
 });
