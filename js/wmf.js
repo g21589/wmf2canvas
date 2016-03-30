@@ -178,25 +178,25 @@ function dibToBmp(dib) {
 
 function getCharset(charset) {
 	switch (charset) {
-	case   0:	return "Cp1252";
-	case   2:	return "Cp1252";
+	case   0:	return "CP1252";
+	case   2:	return "CP1252";
 	case  77:	return "MacRoman";
-	case 128:	return "MS932";
-	case 129:	return "MS949";
+	case 128:	return "CP932";
+	case 129:	return "CP949";
 	case 130:	return "Johab";
-	case 134:	return "MS936";
+	case 134:	return "CP936";
 	case 136:	return "big5";
-	case 161:	return "Cp1253";
-	case 162:	return "Cp1254";
-	case 163:	return "Cp1258";
-	case 177:	return "Cp1255";
-	case 178:	return "Cp1256";
-	case 186:	return "Cp1257";
-	case 204:	return "Cp1251";
-	case 222:	return "MS874";
-	case 238:	return "Cp1250";
-	case 255:	return "Cp1252";
-	default:	return "Cp1252";
+	case 161:	return "CP1253";
+	case 162:	return "CP1254";
+	case 163:	return "CP1258";
+	case 177:	return "CP1255";
+	case 178:	return "CP1256";
+	case 186:	return "CP1257";
+	case 204:	return "CP1251";
+	case 222:	return "CP874";
+	case 238:	return "CP1250";
+	case 255:	return "CP1252";
+	default:	return "CP1252";
 	}
 }
 
