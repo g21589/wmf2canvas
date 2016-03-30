@@ -1,6 +1,0 @@
-{
-  "name": "Wmf2canvas",
-  "tagline": "Convert WMF (Windows Metafile) image file to HTML5 canvas",
-  "body": "wmf2canvas\r\n==========\r\n[![MIT License][license-image]][license-url]\r\n\r\nConvert WMF (Windows Metafile) image file to HTML5 canvas\r\n\r\nOnline Demo\r\n----\r\ncomming soon\r\n\r\n\r\nUsage\r\n----\r\n```html\r\n<input type=\"file\" id=\"file\" accept=\"image/x-wmf\" />\r\n<canvas id=\"canvas\"></canvas>\r\n\r\n<script>\r\nlet wmf = new WMFConverter();   // new the WMFConverter object\r\n\t\r\nlet canvas = document.getElementById(\"canvas\");\r\nlet file = document.getElementById(\"file\");\r\n\t\r\nfile.onchange = function() {\r\n\tlet filename = this.files[0];\r\n\twmf.toCanvas(filename, canvas); // load the wmf file and convert to canvas graph\r\n}\r\n</script>\r\n```\r\n\r\nVersion\r\n----\r\n\r\nBets test\r\n\r\n\r\nLicense\r\n----\r\n\r\nMIT\r\n\r\n[license-image]: http://img.shields.io/badge/license-MIT-blue.svg?style=flat\r\n[license-url]: LICENSE\r\n",
-  "note": "Don't delete this file! It's used internally to help with page regeneration."
-}
