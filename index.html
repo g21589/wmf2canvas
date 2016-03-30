@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Wmf2canvas by g21589</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Wmf2canvas</h1>
+        <p>Convert WMF (Windows Metafile) image file to HTML5 canvas</p>
+
+        <p class="view"><a href="https://github.com/g21589/wmf2canvas">View the Project on GitHub <small>g21589/wmf2canvas</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/g21589/wmf2canvas/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/g21589/wmf2canvas/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/g21589/wmf2canvas">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a id="wmf2canvas" class="anchor" href="#wmf2canvas" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>wmf2canvas</h1>
+
+<p><a href="LICENSE"><img src="http://img.shields.io/badge/license-MIT-blue.svg?style=flat" alt="MIT License"></a></p>
+
+<p>Convert WMF (Windows Metafile) image file to HTML5 canvas</p>
+
+<h2>
+<a id="online-demo" class="anchor" href="#online-demo" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Online Demo</h2>
+
+<p>comming soon</p>
+
+<h2>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Usage</h2>
+
+<div class="highlight highlight-text-html-basic"><pre>&lt;<span class="pl-ent">input</span> <span class="pl-e">type</span>=<span class="pl-s"><span class="pl-pds">"</span>file<span class="pl-pds">"</span></span> <span class="pl-e">id</span>=<span class="pl-s"><span class="pl-pds">"</span>file<span class="pl-pds">"</span></span> <span class="pl-e">accept</span>=<span class="pl-s"><span class="pl-pds">"</span>image/x-wmf<span class="pl-pds">"</span></span> /&gt;
+&lt;<span class="pl-ent">canvas</span> <span class="pl-e">id</span>=<span class="pl-s"><span class="pl-pds">"</span>canvas<span class="pl-pds">"</span></span>&gt;&lt;/<span class="pl-ent">canvas</span>&gt;
+
+<span class="pl-s1">&lt;<span class="pl-ent">script</span>&gt;</span>
+<span class="pl-s1"><span class="pl-k">let</span> wmf <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">WMFConverter</span>();   <span class="pl-c">// new the WMFConverter object</span></span>
+<span class="pl-s1"></span>
+<span class="pl-s1"><span class="pl-k">let</span> canvas <span class="pl-k">=</span> <span class="pl-c1">document</span>.<span class="pl-c1">getElementById</span>(<span class="pl-s"><span class="pl-pds">"</span>canvas<span class="pl-pds">"</span></span>);</span>
+<span class="pl-s1"><span class="pl-k">let</span> file <span class="pl-k">=</span> <span class="pl-c1">document</span>.<span class="pl-c1">getElementById</span>(<span class="pl-s"><span class="pl-pds">"</span>file<span class="pl-pds">"</span></span>);</span>
+<span class="pl-s1"></span>
+<span class="pl-s1"><span class="pl-smi">file</span>.<span class="pl-en">onchange</span> <span class="pl-k">=</span> <span class="pl-k">function</span>() {</span>
+<span class="pl-s1">    <span class="pl-k">let</span> filename <span class="pl-k">=</span> <span class="pl-v">this</span>.<span class="pl-smi">files</span>[<span class="pl-c1">0</span>];</span>
+<span class="pl-s1">    <span class="pl-smi">wmf</span>.<span class="pl-en">toCanvas</span>(filename, canvas); <span class="pl-c">// load the wmf file and convert to canvas graph</span></span>
+<span class="pl-s1">}</span>
+<span class="pl-s1">&lt;/<span class="pl-ent">script</span>&gt;</span></pre></div>
+
+<h2>
+<a id="version" class="anchor" href="#version" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Version</h2>
+
+<p>Bets test</p>
+
+<h2>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h2>
+
+<p>MIT</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/g21589">g21589</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
