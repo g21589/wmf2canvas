@@ -447,7 +447,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					}
 				}
 				*/
-				console.warn("DIB_CREATE_PATTERN_BRUSH");
+				console.info("DIB_CREATE_PATTERN_BRUSH");
 				break;
 			}
 			case RECORD_SET_LAYOUT: {
@@ -546,14 +546,21 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				break;
 			}
 			case RECORD_POLYLINE: {
-				/*
-				Point[] points = new Point[dv.getInt16(offset, true)]; offset += 2;
-				for (let i = 0; i < points.length; i++) {
-					points[i] = new Point(dv.getInt16(offset, true), dv.getInt16(offset, true));
-					offset += 4;
+				let numOfPoints = dv.getInt16(offset, true); offset += 2;
+				
+				ctx.beginPath();
+				
+				let x = dv.getInt16(offset, true); offset += 2;
+				let y = dv.getInt16(offset, true); offset += 2;
+				ctx.moveTo(x, y);
+				
+				for (let i = 0; i < numOfPoints; i++) {
+					x = dv.getInt16(offset, true); offset += 2;
+					y = dv.getInt16(offset, true); offset += 2;
+					ctx.lineTo(x, y);
 				}
-				*/
-				//gdi.polyline(points);
+				
+				ctx.stroke();
 				console.log("POLYLINE");
 				break;
 			}
@@ -859,12 +866,35 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 						obj.weight, Math.abs(obj.height), obj.faceName);
 					break;
 				}
-				console.error("SELECT_OBJECT " + objID + " : " + JSON.stringify(obj));
+				console.info("SELECT_OBJECT " + objID + " : " + JSON.stringify(obj));
 				break;
 			}
 			case RECORD_SET_TEXT_ALIGN: {
 				let align = dv.getInt16(offset, true); offset += 2;
-				//gdi.setTextAlign(align);
+				
+				let alignH = align & (0x00 | 0x06 | 0x02);
+				let alignV = align & (0x08 | 0x00 | 0x18);
+				
+				if (alignH == 0x02) {
+					ctx.textAlign = "right";
+				} else if (alignH == 0x06) {
+					ctx.textAlign = "center";
+				} else {
+					ctx.textAlign = "left";
+				}
+				
+				if (alignV == 0x08) {
+					ctx.textBaseline = "bottom";
+				} else if (alignV == 0x00) {
+					ctx.textBaseline = "top";
+				} else {
+					ctx.textBaseline = "alphabetic";
+				}
+				/*
+				ctx.textBaseline = "middle";
+				ctx.textBaseline = "hanging";
+				*/
+				
 				console.log("SET_TEXT_ALIGN " + align);
 				break;
 			}
@@ -1038,7 +1068,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 			case RECORD_DELETE_OBJECT: {
 				let objID = dv.getUint16(offset, true); offset += 2;
 				objs[objID] = null;
-				console.error("DELETE_OBJECT " + objID /*+ " Objs: " + JSON.stringify(objs)*/);
+				console.info("DELETE_OBJECT " + objID /*+ " Objs: " + JSON.stringify(objs)*/);
 				break;
 			}
 			case RECORD_CREATE_PALETTE: {
@@ -1053,7 +1083,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					"entries"	: entries
 				});
 				
-				console.warn("CREATE_PALETTE");
+				console.info("CREATE_PALETTE");
 				break;
 			}
 			case RECORD_CREATE_PATTERN_BRUSH: {
@@ -1064,7 +1094,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					"image"	: image
 				});
 				
-				console.warn("CREATE_PATTERN_BRUSH");
+				console.info("CREATE_PATTERN_BRUSH");
 				break;
 			}
 			case RECORD_CREATE_PEN_INDIRECT: {
@@ -1080,10 +1110,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					"width" : width
 				});
 				
-				//color = Int32ToHexColor(color);
-				//ctx.lineWidth = width;
-				//ctx.strokeStyle = color;
-				console.warn("CREATE_PEN_INDIRECT " + JSON.stringify({style, color, width}));
+				console.info("CREATE_PEN_INDIRECT " + JSON.stringify({style, color, width}));
 				break;
 			}
 			case RECORD_CREATE_FONT_INDIRECT: {
@@ -1132,8 +1159,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					"pitchAndFamily"	: pitchAndFamily	
 				});
 				
-				//ctx.font = sprintf("%s%d %dpx '%s'", italic ? "italic " : "" , weight, Math.abs(height), faceName);
-				console.warn("CREATE_FONT_INDIRECT " + 
+				console.info("CREATE_FONT_INDIRECT " + 
 					JSON.stringify({
 						faceName, height, width, escapement, orientation, weight, italic, underline, strikeout, charset, outPrecision, clipPrecision, quality, pitchAndFamily
 					})
@@ -1152,9 +1178,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					"hatch"	: hatch
 				});
 				
-				//color = Int32ToHexColor(color);
-				//ctx.fillStyle = color;
-				console.warn("CREATE_BRUSH_INDIRECT " + JSON.stringify({style, color, hatch}));
+				console.info("CREATE_BRUSH_INDIRECT " + JSON.stringify({style, color, hatch}));
 				break;
 			}
 			case RECORD_CREATE_RECT_RGN: {
@@ -1171,11 +1195,11 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					"ey"	: ey
 				});
 				
-				console.warn("CREATE_RECT_RGN");
+				console.info("CREATE_RECT_RGN");
 				break;
 			}
 			default: {
-				console.warn("unsuppored id find: " + id + " (size=" + size + ")");
+				console.info("unsuppored id find: " + id + " (size=" + size + ")");
 			}
 			}
 			
