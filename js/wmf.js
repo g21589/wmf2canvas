@@ -1,3 +1,5 @@
+"use strict";
+
 var Buffer = require('buffer').Buffer;
 var Icnov = require('iconv-lite');
 
@@ -332,7 +334,9 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 
 			mtType = dv.getUint16(offset, true); offset += 2;
 			mtHeaderSize = dv.getUint16(offset, true); offset += 2;
-			console.log("Placeable Header " + JSON.stringify({vsx, vsy, vex, vey, dpi}));
+			console.log("Placeable Header " + JSON.stringify({
+				"vsx": vsx, "vsy": vsy, "vex": vex, "vey": vey, "dpi": dpi
+			}));
 			
 		} else {
 			mtType = (key & 0x0000FFFF);
@@ -349,7 +353,10 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 			throw new UserException("Invalid file format.");
 		}
 		
-		let objs = new Array(mtNoObjects).fill(null);
+		let objs = new Array(mtNoObjects);
+		for (let i = 0; i < mtNoObjects; i++) {
+			objs[i] = null;
+		}
 		
 		while (true) {
 			
@@ -983,7 +990,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				ctx.fillStyle = textColor;
 				ctx.fillText(text, x, y);
 				ctx.fillStyle = fillStyle_bk;
-				console.log("EXT_TEXT_OUT " + JSON.stringify({x, y, count, text}));
+				console.log("EXT_TEXT_OUT " + JSON.stringify({"x": x, "y": y, "count": count, "text": text}));
 				break;
 			}
 			case RECORD_SET_DIBITS_TO_DEVICE: {
@@ -1042,7 +1049,9 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				
 				drawBmpImage(ctx, base64, sx, sy, sw, sh, dx, dy, dw, dh, rop);
 				
-				console.log("DIB_STRETCH_BLT " + JSON.stringify({dx, dy, dw, dh, sx, sy, sw, sh, rop}));
+				console.log("DIB_STRETCH_BLT " + JSON.stringify({
+					"dx": dx, "dy": dy, "dw": dw, "dh": dh, "sx": sx, "sy": sy, "sw": sw, "sh": sh, "rop": rop
+				}));
 				break;
 			}
 			case RECORD_STRETCH_DIBITS: {
@@ -1062,7 +1071,9 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				
 				drawBmpImage(ctx, base64, sx, sy, sw, sh, dx, dy, dw, dh, rop);
 				
-				console.log("STRETCH_DIBITS " + JSON.stringify({dx, dy, dw, dh, sx, sy, sw, sh, usage, rop}));
+				console.log("STRETCH_DIBITS " + JSON.stringify({
+					"dx": dx, "dy": dy, "dw": dw, "dh": dh, "sx": sx, "sy": sy, "sw": sw, "sh": sh, "usage": usage, "rop": rop
+				}));
 				break;
 			}
 			case RECORD_DELETE_OBJECT: {
@@ -1110,7 +1121,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					"width" : width
 				});
 				
-				console.info("CREATE_PEN_INDIRECT " + JSON.stringify({style, color, width}));
+				console.info("CREATE_PEN_INDIRECT " + JSON.stringify({"style": style, "color": color, "width": width}));
 				break;
 			}
 			case RECORD_CREATE_FONT_INDIRECT: {
@@ -1140,8 +1151,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				}
 				charset = getCharset(charset);
 				let faceName = Icnov.decode(buffer, charset).replace(/\u0000/g, "");
-				
-				insertObjToFirstNull(objs, {
+				let obj = {
 					"type" 				: "FONT",
 					"faceName"			: faceName,
 					"height"			: height,
@@ -1157,13 +1167,11 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					"clipPrecision"		: clipPrecision,
 					"quality"			: quality,
 					"pitchAndFamily"	: pitchAndFamily	
-				});
+				};
 				
-				console.info("CREATE_FONT_INDIRECT " + 
-					JSON.stringify({
-						faceName, height, width, escapement, orientation, weight, italic, underline, strikeout, charset, outPrecision, clipPrecision, quality, pitchAndFamily
-					})
-				);
+				insertObjToFirstNull(objs, obj);
+				
+				console.info("CREATE_FONT_INDIRECT " + JSON.stringify(obj));
 				break;
 			}
 			case RECORD_CREATE_BRUSH_INDIRECT: {
@@ -1178,7 +1186,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					"hatch"	: hatch
 				});
 				
-				console.info("CREATE_BRUSH_INDIRECT " + JSON.stringify({style, color, hatch}));
+				console.info("CREATE_BRUSH_INDIRECT " + JSON.stringify({"style": style, "color": color, "hatch": hatch}));
 				break;
 			}
 			case RECORD_CREATE_RECT_RGN: {
