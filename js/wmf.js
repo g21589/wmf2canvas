@@ -554,7 +554,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				let y = dv.getInt16(offset, true); offset += 2;
 				ctx.moveTo(x, y);
 				
-				for (let i = 0; i < numOfPoints; i++) {
+				for (let i = 1; i < numOfPoints; i++) {
 					x = dv.getInt16(offset, true); offset += 2;
 					y = dv.getInt16(offset, true); offset += 2;
 					ctx.lineTo(x, y);
