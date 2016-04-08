@@ -9,7 +9,7 @@ var WMFConverter = function() {
 	
 };
 
-WMFConverter.prototype.toCanvas = function(filename, canvas) {
+WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 	
 	let reader = new FileReader();
 	reader.onload = function (event) {
@@ -20,6 +20,9 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 			console.error(e.message);
 		}
 		this.executeTime = performance.now() - t;
+		if (typeof(callback) == "function") {
+			callback(this);
+		}
 	};
 	reader.onerror = function (event) {
 		console.error(event);

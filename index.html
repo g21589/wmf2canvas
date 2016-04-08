@@ -19,7 +19,9 @@ window.onload = function() {
 	
 	file.onchange = function() {
 		let filename = this.files[0];
-		wmf.toCanvas(filename, canvas);
+		wmf.toCanvas(filename, canvas, function(obj) {
+			document.getElementById("exe_time").innerText = obj.executeTime.toFixed(2) + " (ms)";
+		});
 	}
 	
 };
