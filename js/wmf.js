@@ -1,3 +1,5 @@
+"use strict";
+
 var Buffer = require('buffer').Buffer;
 var Icnov = require('iconv-lite');
 
@@ -7,7 +9,7 @@ var WMFConverter = function() {
 	
 };
 
-WMFConverter.prototype.toCanvas = function(filename, canvas) {
+WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 	
 	let reader = new FileReader();
 	reader.onload = function (event) {
@@ -18,6 +20,9 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 			console.error(e.message);
 		}
 		this.executeTime = performance.now() - t;
+		if (typeof(callback) == "function") {
+			callback(this);
+		}
 	};
 	reader.onerror = function (event) {
 		console.error(event);
@@ -231,7 +236,23 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 		default:	return "CP1252";
 		}
 	}
-
+	
+	function toAbsoluteX(x, ww, wx, mx, wox, wsx) {
+		return ((ww >= 0) ? 1 : -1) * (mx * x - (wx + wox)) / wsx;
+	}
+	
+	function toAbsoluteY(y, wh, wy, my, woy, wsy) {
+		return ((wh >= 0) ? 1 : -1) * (my * y - (wy + woy)) / wsy;
+	}
+	
+	function toRelativeX(x, ww, mx, wsx) {
+		return ((ww >= 0) ? 1 : -1) * (mx * x) / wsx;
+	}
+	
+	function toRelativeY(y, wh, my, wsy) {
+		return ((wh >= 0) ? 1 : -1) * (my * y) / wsy;
+	}
+	
 	function parseWMF(dv, canvas) {
 		
 		const RECORD_EOF 						= 0x0000;
@@ -312,7 +333,19 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 		
 		let offset = 0, offset_bk = 0;			
 		let mtType = 0, mtHeaderSize = 0;
-		let orix = 0, oriy = 0;
+		
+		// DC window
+		let wx = 0, wy = 0, ww = 0, wh = 0;
+		
+		// DC window offset
+		let wox = 0, woy = 0;
+		
+		// DC window scale
+		let wsx = 1.0, wsy = 1.0;
+		
+		// DC mapping scale
+		let mx = 1.0, my = 1.0;
+		
 		let charset = 0;
 		let textColor = "#000";
 		
@@ -332,7 +365,9 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 
 			mtType = dv.getUint16(offset, true); offset += 2;
 			mtHeaderSize = dv.getUint16(offset, true); offset += 2;
-			console.log("Placeable Header " + JSON.stringify({vsx, vsy, vex, vey, dpi}));
+			console.log("Placeable Header " + JSON.stringify({
+				"vsx": vsx, "vsy": vsy, "vex": vex, "vey": vey, "dpi": dpi
+			}));
 			
 		} else {
 			mtType = (key & 0x0000FFFF);
@@ -349,7 +384,10 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 			throw new UserException("Invalid file format.");
 		}
 		
-		let objs = new Array(mtNoObjects).fill(null);
+		let objs = new Array(mtNoObjects);
+		for (let i = 0; i < mtNoObjects; i++) {
+			objs[i] = null;
+		}
 		
 		while (true) {
 			
@@ -474,7 +512,8 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 			case RECORD_OFFSET_VIEWPORT_ORG_EX: {
 				let y = dv.getInt16(offset, true); offset += 2;
 				let x = dv.getInt16(offset, true); offset += 2;
-				//gdi.offsetViewportOrgEx(x, y, null);
+				//vox = x;
+				//voy = y;
 				console.log("OFFSET_VIEWPORT_ORG_EX");
 				break;
 			}
@@ -528,13 +567,13 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				
 				ctx.beginPath();
 				
-				let x = dv.getInt16(offset, true); offset += 2;
-				let y = dv.getInt16(offset, true); offset += 2;
+				let x = toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx); offset += 2;
+				let y = toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy); offset += 2;
 				ctx.moveTo(x, y);
 				
 				for (let i = 1; i < numOfPoints; i++) {
-					x = dv.getInt16(offset, true); offset += 2;
-					y = dv.getInt16(offset, true); offset += 2;
+					x = toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx); offset += 2;
+					y = toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy); offset += 2;
 					ctx.lineTo(x, y);
 				}
 				
@@ -550,13 +589,13 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				
 				ctx.beginPath();
 				
-				let x = dv.getInt16(offset, true); offset += 2;
-				let y = dv.getInt16(offset, true); offset += 2;
+				let x = toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx); offset += 2;
+				let y = toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy); offset += 2;
 				ctx.moveTo(x, y);
 				
-				for (let i = 0; i < numOfPoints; i++) {
-					x = dv.getInt16(offset, true); offset += 2;
-					y = dv.getInt16(offset, true); offset += 2;
+				for (let i = 1; i < numOfPoints; i++) {
+					x = toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx); offset += 2;
+					y = toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy); offset += 2;
 					ctx.lineTo(x, y);
 				}
 				
@@ -572,10 +611,9 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				break;
 			}
 			case RECORD_SET_WINDOW_ORG_EX: {
-				oriy = dv.getInt16(offset, true); offset += 2;
-				orix = dv.getInt16(offset, true); offset += 2;
-				ctx.translate(-orix, -oriy);
-				console.log("SET_WINDOW_ORG_EX (" + orix + ", " + oriy + ")");
+				wy = dv.getInt16(offset, true); offset += 2;
+				wx = dv.getInt16(offset, true); offset += 2;
+				console.log("SET_WINDOW_ORG_EX (" + wx + ", " + wy + ")");
 				break;
 			}
 			case RECORD_SET_WINDOW_EXT_EX: {
@@ -585,32 +623,36 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				let inMemCanvas = document.createElement('canvas');
 				let inMemCtx = inMemCanvas.getContext('2d');
 				inMemCtx.drawImage(canvas, 0, 0);
-				canvas.width = width;
-				canvas.height = height;
+				canvas.width = Math.abs(width);
+				canvas.height = Math.abs(height);
 				ctx.drawImage(inMemCanvas, 0, 0);
-				// TODO: Set all old ctx properties
-				ctx.translate(-orix, -oriy);
+				
+				ww = width;
+				wh = height;
 				console.log("SET_WINDOW_EXT_EX (" + width + ", " + height + ")");
 				break;
 			}
 			case RECORD_SET_VIEWPORT_ORG_EX: {
 				let y = dv.getInt16(offset, true); offset += 2;
 				let x = dv.getInt16(offset, true); offset += 2;
-				//gdi.setViewportOrgEx(x, y, null);
+				vx = x;
+				vy = y;
 				console.log("SET_VIEWPORT_ORG_EX (" + x + ", " + y + ")");
 				break;
 			}
 			case RECORD_SET_VIEWPORT_EXT_EX: {
 				let y = dv.getInt16(offset, true); offset += 2;
 				let x = dv.getInt16(offset, true); offset += 2;
-				//gdi.setViewportExtEx(x, y, null);
+				vw = width;
+				vh = height;
 				console.log("SET_VIEWPORT_EXT_EX (" + x + ", " + y + ")");
 				break;
 			}
 			case RECORD_OFFSET_WINDOW_ORG_EX: {
 				let y = dv.getInt16(offset, true); offset += 2;
 				let x = dv.getInt16(offset, true); offset += 2;
-				//gdi.offsetWindowOrgEx(x, y, null);
+				vox = x;
+				voy = y;
 				console.log("OFFSET_WINDOW_ORG_EX (" + x + ", " + y + ")");
 				break;
 			}
@@ -619,7 +661,8 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				let y = dv.getInt16(offset, true); offset += 2;
 				let xd = dv.getInt16(offset, true); offset += 2;
 				let x = dv.getInt16(offset, true); offset += 2;
-				//gdi.scaleWindowExtEx(x, xd, y, yd, null);
+				wsx = (wsx * x) / xd;
+				wsy = (wsy * y) / yd;
 				console.log("SCALE_WINDOW_EXT_EX (" + x + ", " + y + ") (" + xd + ", " + yd + ")");
 				break;
 			}
@@ -717,14 +760,14 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					
 					ctx.beginPath();
 					
-					let x = dv.getInt16(offset, true); offset += 2;
-					let y = dv.getInt16(offset, true); offset += 2;
+					let x = toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx); offset += 2;
+					let y = toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy); offset += 2;
 					ctx.moveTo(x, y);
 					//console.log("M " + JSON.stringify({x, y}));
 					
 					for (let j = 1; j < numOfPoints[i]; j++) {
-						x = dv.getInt16(offset, true); offset += 2;
-						y = dv.getInt16(offset, true); offset += 2;
+						x = toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx); offset += 2;
+						y = toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy); offset += 2;
 						ctx.lineTo(x, y);
 						//console.log("L " + JSON.stringify({x, y}));
 					}
@@ -940,9 +983,10 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 			case RECORD_EXT_TEXT_OUT: {
 				// TODO
 				let rsize = size;
-
-				let y = dv.getInt16(offset, true); offset += 2;
-				let x = dv.getInt16(offset, true); offset += 2;
+				
+				let y = toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy); offset += 2;
+				let x = toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx); offset += 2;
+				
 				let count = dv.getInt16(offset, true); offset += 2;
 				let options = dv.getUint16(offset, true); offset += 2;;
 				rsize -= 4;
@@ -983,7 +1027,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				ctx.fillStyle = textColor;
 				ctx.fillText(text, x, y);
 				ctx.fillStyle = fillStyle_bk;
-				console.log("EXT_TEXT_OUT " + JSON.stringify({x, y, count, text}));
+				console.log("EXT_TEXT_OUT " + JSON.stringify({"x": x, "y": y, "count": count, "text": text}));
 				break;
 			}
 			case RECORD_SET_DIBITS_TO_DEVICE: {
@@ -1042,7 +1086,9 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				
 				drawBmpImage(ctx, base64, sx, sy, sw, sh, dx, dy, dw, dh, rop);
 				
-				console.log("DIB_STRETCH_BLT " + JSON.stringify({dx, dy, dw, dh, sx, sy, sw, sh, rop}));
+				console.log("DIB_STRETCH_BLT " + JSON.stringify({
+					"dx": dx, "dy": dy, "dw": dw, "dh": dh, "sx": sx, "sy": sy, "sw": sw, "sh": sh, "rop": rop
+				}));
 				break;
 			}
 			case RECORD_STRETCH_DIBITS: {
@@ -1062,7 +1108,9 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				
 				drawBmpImage(ctx, base64, sx, sy, sw, sh, dx, dy, dw, dh, rop);
 				
-				console.log("STRETCH_DIBITS " + JSON.stringify({dx, dy, dw, dh, sx, sy, sw, sh, usage, rop}));
+				console.log("STRETCH_DIBITS " + JSON.stringify({
+					"dx": dx, "dy": dy, "dw": dw, "dh": dh, "sx": sx, "sy": sy, "sw": sw, "sh": sh, "usage": usage, "rop": rop
+				}));
 				break;
 			}
 			case RECORD_DELETE_OBJECT: {
@@ -1110,7 +1158,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					"width" : width
 				});
 				
-				console.info("CREATE_PEN_INDIRECT " + JSON.stringify({style, color, width}));
+				console.info("CREATE_PEN_INDIRECT " + JSON.stringify({"style": style, "color": color, "width": width}));
 				break;
 			}
 			case RECORD_CREATE_FONT_INDIRECT: {
@@ -1140,8 +1188,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 				}
 				charset = getCharset(charset);
 				let faceName = Icnov.decode(buffer, charset).replace(/\u0000/g, "");
-				
-				insertObjToFirstNull(objs, {
+				let obj = {
 					"type" 				: "FONT",
 					"faceName"			: faceName,
 					"height"			: height,
@@ -1157,13 +1204,11 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					"clipPrecision"		: clipPrecision,
 					"quality"			: quality,
 					"pitchAndFamily"	: pitchAndFamily	
-				});
+				};
 				
-				console.info("CREATE_FONT_INDIRECT " + 
-					JSON.stringify({
-						faceName, height, width, escapement, orientation, weight, italic, underline, strikeout, charset, outPrecision, clipPrecision, quality, pitchAndFamily
-					})
-				);
+				insertObjToFirstNull(objs, obj);
+				
+				console.info("CREATE_FONT_INDIRECT " + JSON.stringify(obj));
 				break;
 			}
 			case RECORD_CREATE_BRUSH_INDIRECT: {
@@ -1178,7 +1223,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas) {
 					"hatch"	: hatch
 				});
 				
-				console.info("CREATE_BRUSH_INDIRECT " + JSON.stringify({style, color, hatch}));
+				console.info("CREATE_BRUSH_INDIRECT " + JSON.stringify({"style": style, "color": color, "hatch": hatch}));
 				break;
 			}
 			case RECORD_CREATE_RECT_RGN: {
