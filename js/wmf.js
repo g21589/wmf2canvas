@@ -348,6 +348,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 		
 		let charset = 0;
 		let textColor = "#000";
+		let fillMode = "evenodd";
 		
 		let key = dv.getUint32(offset, true); offset += 4;
 		if (key == 0x9AC6CDD7) {
@@ -445,8 +446,8 @@ WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 			}
 			case RECORD_SET_POLY_FILL_MODE: {
 				let mode = dv.getInt16(offset, true); offset += 2;
-				//gdi.setPolyFillMode(mode);
-				console.log("SET_POLY_FILL_MODE");
+				fillMode = (mode == 0x01) ? "evenodd" : "nonzero";
+				console.log("SET_POLY_FILL_MODE (" + fillMode + ")");
 				break;
 			}
 			case RECORD_SET_STRETCH_BLT_MODE: {
@@ -578,7 +579,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 				}
 				
 				ctx.closePath();
-				ctx.fill();
+				ctx.fill(fillMode);
 				ctx.stroke();
 				
 				console.log("POLYGON");
@@ -773,7 +774,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 					}
 					
 					ctx.closePath();
-					ctx.fill();
+					ctx.fill(fillMode);
 					ctx.stroke();
 					
 				}
