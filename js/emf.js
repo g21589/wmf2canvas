@@ -553,7 +553,10 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				break;
 			}
 			case EMR_SETTEXTCOLOR: {
-				console.log("EMR_SETTEXTCOLOR");
+				let color = dv.getInt32(offset, true); offset += 4;
+				color = Int32ToHexColor(color);
+				textColor = color;
+				console.log("EMR_SETTEXTCOLOR " + textColor);
 				break;
 			}
 			case EMR_SETBKCOLOR: {
@@ -736,26 +739,33 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				break;
 			}
 			case EMR_BEGINPATH: {
+				ctx.beginPath();
 				console.log("EMR_BEGINPATH");
 				break;
 			}
 			case EMR_ENDPATH: {
+				//ctx.closePath();
 				console.log("EMR_ENDPATH");
 				break;
 			}
 			case EMR_CLOSEFIGURE: {
+				ctx.closePath();
 				console.log("EMR_CLOSEFIGURE");
 				break;
 			}
 			case EMR_FILLPATH: {
+				ctx.fill();
 				console.log("EMR_FILLPATH");
 				break;
 			}
 			case EMR_STROKEANDFILLPATH: {
+				ctx.fill();
+				ctx.stroke();
 				console.log("EMR_STROKEANDFILLPATH");
 				break;
 			}
 			case EMR_STROKEPATH: {
+				ctx.stroke();
 				console.log("EMR_STROKEPATH");
 				break;
 			}
@@ -885,8 +895,8 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				let Options = dv.getUint32(offset, true); offset += 4;
 				let x = toAbsoluteX(dv.getInt32(offset, true), ww, wx, mx, wox, wsx); offset += 4;
 				let y = toAbsoluteY(dv.getInt32(offset, true), wh, wy, my, woy, wsy); offset += 4;
-				let w = toAbsoluteY(dv.getInt32(offset, true), wh, wy, my, woy, wsy); offset += 4;
-				let h = toAbsoluteX(dv.getInt32(offset, true), ww, wx, mx, wox, wsx); offset += 4;
+				let w = toAbsoluteX(dv.getInt32(offset, true), ww, wx, mx, wox, wsx); offset += 4;
+				let h = toAbsoluteY(dv.getInt32(offset, true), wh, wy, my, woy, wsy); offset += 4;
 				let offDx = dv.getUint32(offset, true); offset += 4;
 				
 				offset = offset_bk + offString;
@@ -898,7 +908,11 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				}
 				charset = getCharset(charset);
 				let text = Icnov.decode(buffer, "utf16").replace(/\u0000/g, "");
+				
+				let fillStyle_bk = ctx.fillStyle;
+				ctx.fillStyle = textColor;
 				ctx.fillText(text, x, y);
+				ctx.fillStyle = fillStyle_bk;
 				
 				console.log("EMR_EXTTEXTOUTW " + JSON.stringify({"x": x, "y": y, "count": count, "text": text}));
 				break;
@@ -916,6 +930,19 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				break;
 			}
 			case EMR_POLYBEZIERTO16: {
+				offset += 16;	// Bounds (16 bytes)
+				let numOfPoints = dv.getUint32(offset, true); offset += 4;
+				
+				for (let i = 0; i < numOfPoints / 3; i++) {
+					let cp1x = toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx); offset += 2;
+					let cp1y = toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy); offset += 2;
+					let cp2x = toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx); offset += 2;
+					let cp2y = toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy); offset += 2;
+					let x = toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx); offset += 2;
+					let y = toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy); offset += 2;
+					ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
+				}
+				
 				console.log("EMR_POLYBEZIERTO16");
 				break;
 			}

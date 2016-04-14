@@ -28,7 +28,7 @@ window.onload = function() {
 		} else if (file.type == "image/x-emf") {
 			let emf = new EMFConverter();
 			emf.toCanvas(file, canvas, function(obj) {
-				//document.getElementById("exe_time").innerText = obj.executeTime.toFixed(2) + " (ms)";
+				document.getElementById("exe_time").innerText = obj.executeTime.toFixed(2) + " (ms)";
 			});
 		}
 
