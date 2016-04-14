@@ -9,19 +9,29 @@
 <script src="js/sprintf.min.js"></script>
 <script src="js/bundle.js"></script>
 <script src="js/wmf.js"></script>
+<script src="js/emf.js"></script>
 <script>
 window.onload = function() {
 	
-	let wmf = new WMFConverter();
-	
 	let canvas = document.getElementById("canvas");
-	let file = document.getElementById("file");
+	let fileInput = document.getElementById("file");
 	
-	file.onchange = function() {
-		let filename = this.files[0];
-		wmf.toCanvas(filename, canvas, function(obj) {
-			document.getElementById("exe_time").innerText = obj.executeTime.toFixed(2) + " (ms)";
-		});
+	fileInput.onchange = function() {
+	
+		let file = this.files[0];
+		
+		if (file.type == "image/x-wmf") {
+			let wmf = new WMFConverter();
+			wmf.toCanvas(file, canvas, function(obj) {
+				document.getElementById("exe_time").innerText = obj.executeTime.toFixed(2) + " (ms)";
+			});
+		} else if (file.type == "image/x-emf") {
+			let emf = new EMFConverter();
+			emf.toCanvas(file, canvas, function(obj) {
+				//document.getElementById("exe_time").innerText = obj.executeTime.toFixed(2) + " (ms)";
+			});
+		}
+
 	}
 	
 };
@@ -35,7 +45,7 @@ window.onload = function() {
 	<h3>WMF (Windows Metafile)</h3>
 	<br>
 	<h4>Choose WMF file</h4>
-	<input type="file" id="file" accept="image/x-wmf"/>
+	<input type="file" id="file" accept="image/x-wmf,image/x-emf"/>
 	<h4>Result <span id="exe_time"></span></h4>
 	<canvas id="canvas" class="img-thumbnail" style=""></canvas>
 </div>

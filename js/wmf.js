@@ -9,7 +9,7 @@ var WMFConverter = function() {
 	
 };
 
-WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
+WMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 	
 	let reader = new FileReader();
 	reader.onload = function (event) {
@@ -27,7 +27,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 	reader.onerror = function (event) {
 		console.error(event);
 	};
-	reader.readAsArrayBuffer(filename);
+	reader.readAsArrayBuffer(file);
 	
 	function UserException(message) {
 		this.message = message;
@@ -382,7 +382,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 		let mtNoParameters = dv.getUint16(offset, true); offset += 2;
 		
 		if (mtType != 1 || mtHeaderSize != 9) {
-			throw new UserException("Invalid file format.");
+			throw new UserException("Invalid WMF file format.");
 		}
 		
 		let objs = new Array(mtNoObjects);
@@ -1245,7 +1245,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 				break;
 			}
 			default: {
-				console.info("unsuppored id find: " + id + " (size=" + size + ")");
+				console.warn("unsuppored id find: " + id + " (size=" + size + ")");
 			}
 			}
 			
@@ -1256,11 +1256,11 @@ WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 	
 };
 
-WMFConverter.prototype.toPng = function(filename) {
+WMFConverter.prototype.toPng = function(file) {
 	// TODO
 };
 
-WMFConverter.prototype.toSvg = function(filename) {
+WMFConverter.prototype.toSvg = function(file) {
 	// TODO
 };
 
