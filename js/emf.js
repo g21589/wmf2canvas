@@ -382,6 +382,25 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 		
 		let offset = 0, offset_bk = 0;
 		
+		// DC window
+		let wx = 0, wy = 0, ww = 0, wh = 0;
+		
+		// DC window offset
+		let wox = 0, woy = 0;
+		
+		// DC window scale
+		let wsx = 1.0, wsy = 1.0;
+		
+		// DC mapping scale
+		let mx = 1.0, my = 1.0;
+		
+		// Viewport
+		let vx = 0, vy = 0, vw = 0, vh = 0;
+		
+		let charset = 0;
+		let textColor = "#000";
+		let fillMode = "evenodd";
+		
 		let HeaderType = dv.getUint32(offset, true); offset += 4;
 		if (HeaderType != 0x00000001) {
 			throw new UserException("Invalid EMF file format.");
@@ -403,6 +422,11 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 		
 		// TODO
 		offset += HeaderSize - 4;
+		
+		let objs = new Array(256);
+		for (let i = 0; i < 256; i++) {
+			objs[i] = null;
+		}
 		
 		while (true) {
 			
@@ -451,19 +475,41 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				break;
 			}
 			case EMR_SETWINDOWEXTEX: {
-				console.log("EMR_SETWINDOWEXTEX");
+				let height = dv.getInt32(offset, true); offset += 4;
+				let width = dv.getInt32(offset, true); offset += 4;
+				
+				let inMemCanvas = document.createElement('canvas');
+				let inMemCtx = inMemCanvas.getContext('2d');
+				inMemCtx.drawImage(canvas, 0, 0);
+				canvas.width = Math.abs(width);
+				canvas.height = Math.abs(height);
+				ctx.drawImage(inMemCanvas, 0, 0);
+				
+				ww = width;
+				wh = height;
+				console.log("EMR_SETWINDOWEXTEX (" + width + ", " + height + ")");
 				break;
 			}
 			case EMR_SETWINDOWORGEX: {
-				console.log("EMR_SETWINDOWORGEX");
+				wy = dv.getInt32(offset, true); offset += 4;
+				wx = dv.getInt32(offset, true); offset += 4;
+				console.log("EMR_SETWINDOWORGEX (" + wx + ", " + wy + ")");
 				break;
 			}
 			case EMR_SETVIEWPORTEXTEX: {
-				console.log("EMR_SETVIEWPORTEXTEX");
+				let height = dv.getInt32(offset, true); offset += 4;
+				let width = dv.getInt32(offset, true); offset += 4;
+				vw = width;
+				vh = height;
+				console.log("EMR_SETVIEWPORTEXTEX (" + vw + ", " + vh + ")");
 				break;
 			}
 			case EMR_SETVIEWPORTORGEX: {
-				console.log("EMR_SETVIEWPORTORGEX");
+				let y = dv.getInt32(offset, true); offset += 4;
+				let x = dv.getInt32(offset, true); offset += 4;
+				vx = x;
+				vy = y;
+				console.log("EMR_SETVIEWPORTORGEX (" + vx + ", " + vy + ")");
 				break;
 			}
 			case EMR_SETBRUSHORGEX: {
@@ -563,6 +609,18 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				break;
 			}
 			case EMR_CREATEPEN: {
+				let ihPen = dv.getUint32(offset, true); offset += 4;
+				let style = dv.getUint32(offset, true); offset += 4;
+				let width = dv.getInt32(offset, true); offset += 4;
+				dv.getInt32(offset, true); offset += 4;
+				let color = Int32ToHexColor(dv.getInt32(offset, true)); offset += 4;
+				
+				insertObjToFirstNull(objs, {
+					"type"  : "PEN",
+					"style" : style,
+					"color" : color,
+					"width" : width
+				});
 				console.log("EMR_CREATEPEN");
 				break;
 			}
@@ -771,8 +829,7 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				break;
 			}
 			case EMR_POLYPOLYGON16: {
-				// Bounds (16 bytes)
-				offset += 16;
+				offset += 16;	// Bounds (16 bytes)
 				let NumberOfPolygons = dv.getUint32(offset, true); offset += 4;
 				let Count = dv.getUint32(offset, true); offset += 4;
 				let PolygonPointCount = new Array(NumberOfPolygons);
@@ -781,16 +838,14 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				}
 				for (let i = 0; i < NumberOfPolygons; i++) {
 					ctx.beginPath();
-					let x = dv.getInt16(offset, true);/*toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx);*/ offset += 2;
-					let y = dv.getInt16(offset, true);/*toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy);*/ offset += 2;
+					let x = toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx); offset += 2;
+					let y = toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy); offset += 2;
 					ctx.moveTo(x, y);
-					//console.log("M " + JSON.stringify({x, y}));
 					
 					for (let j = 1; j < PolygonPointCount[i]; j++) {
-						x = dv.getInt16(offset, true);/*toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx);*/ offset += 2;
-						y = dv.getInt16(offset, true);/*toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy);*/ offset += 2;
+						x = toAbsoluteX(dv.getInt16(offset, true), ww, wx, mx, wox, wsx); offset += 2;
+						y = toAbsoluteY(dv.getInt16(offset, true), wh, wy, my, woy, wsy); offset += 2;
 						ctx.lineTo(x, y);
-						//console.log("L " + JSON.stringify({x, y}));
 					}
 					
 					ctx.closePath();
