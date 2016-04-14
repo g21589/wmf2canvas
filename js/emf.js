@@ -605,7 +605,25 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				break;
 			}
 			case EMR_SELECTOBJECT: {
-				console.log("EMR_SELECTOBJECT");
+				let objID = dv.getUint32(offset, true); offset += 4;
+				let obj = objs[objID];
+				if (obj != null) {
+					switch (obj.type) {
+					case "PEN":
+					case "PEN_EXT":
+						ctx.lineWidth = obj.width;
+						ctx.strokeStyle = obj.color;
+						break;
+					case "BRUSH":
+						ctx.fillStyle = obj.color;
+						break;
+					case "FONT":
+						ctx.font = sprintf("%s%d %dpx '%s'", obj.italic ? "italic " : "" , 
+							obj.weight, Math.abs(obj.height), obj.faceName);
+						break;
+					}
+				}
+				console.log("EMR_SELECTOBJECT " + objID);
 				break;
 			}
 			case EMR_CREATEPEN: {
@@ -621,15 +639,28 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 					"color" : color,
 					"width" : width
 				});
-				console.log("EMR_CREATEPEN");
+				console.log("EMR_CREATEPEN " + JSON.stringify({ihPen, style, width, color}));
 				break;
 			}
 			case EMR_CREATEBRUSHINDIRECT: {
-				console.log("EMR_CREATEBRUSHINDIRECT");
+				let ihBrush = dv.getUint32(offset, true); offset += 4;
+				let style = dv.getUint32(offset, true); offset += 4;
+				let color = Int32ToHexColor(dv.getInt32(offset, true)); offset += 4;
+				let hatch = dv.getUint32(offset, true); offset += 4;
+				
+				insertObjToFirstNull(objs, {
+					"type"	: "BRUSH",
+					"style"	: style,
+					"color"	: color,
+					"hatch"	: hatch
+				});
+				console.log("EMR_CREATEBRUSHINDIRECT " + JSON.stringify({ihBrush, style, color, hatch}));
 				break;
 			}
 			case EMR_DELETEOBJECT: {
-				console.log("EMR_DELETEOBJECT");
+				let objID = dv.getUint32(offset, true); offset += 4;
+				objs[objID] = null;
+				console.log("EMR_DELETEOBJECT " + objID);
 				break;
 			}
 			case EMR_ANGLEARC: {
@@ -793,7 +824,49 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				break;
 			}
 			case EMR_EXTCREATEFONTINDIRECTW: {
-				console.log("EMR_EXTCREATEFONTINDIRECTW");
+				let ihFonts = dv.getUint32(offset, true); offset += 4;
+				let height = dv.getInt32(offset, true); offset += 4;
+				let width = dv.getInt32(offset, true); offset += 4;
+				let escapement = dv.getInt32(offset, true); offset += 4;
+				let orientation = dv.getInt32(offset, true); offset += 4;
+				let weight = dv.getInt32(offset, true); offset += 4;
+				let italic = (dv.getUint8(offset, true) == 1); offset++;
+				let underline = (dv.getUint8(offset, true) == 1); offset++;
+				let strikeout = (dv.getUint8(offset, true) == 1); offset++;
+				charset = dv.getUint8(offset, true); offset++;
+				let outPrecision = dv.getUint8(offset, true); offset++;
+				let clipPrecision = dv.getUint8(offset, true); offset++;
+				let quality = dv.getUint8(offset, true); offset++;
+				let pitchAndFamily = dv.getUint8(offset, true); offset++;
+				
+				let buffer = new Buffer(64);
+				for (let i = 0; i < 64; i++) {
+					let c = dv.getInt8(offset++, true);
+					buffer[i] = c;
+				}
+				charset = getCharset(charset);
+				let faceName = Icnov.decode(buffer, "utf16").replace(/\u0000/g, "");
+				let obj = {
+					"type" 				: "FONT",
+					"faceName"			: faceName,
+					"height"			: height,
+					"width"				: width,
+					"escapement"		: escapement,
+					"orientation"		: orientation,
+					"weight"			: weight,
+					"italic"			: italic,
+					"underline"			: underline,
+					"strikeout"			: strikeout,
+					"charset"			: charset,
+					"outPrecision"		: outPrecision,
+					"clipPrecision"		: clipPrecision,
+					"quality"			: quality,
+					"pitchAndFamily"	: pitchAndFamily	
+				};
+				
+				insertObjToFirstNull(objs, obj);
+				
+				console.log("EMR_EXTCREATEFONTINDIRECTW " + JSON.stringify(obj));
 				break;
 			}
 			case EMR_EXTTEXTOUTA: {
@@ -801,7 +874,33 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				break;
 			}
 			case EMR_EXTTEXTOUTW: {
-				console.log("EMR_EXTTEXTOUTW");
+				offset += 16; // Ignore
+				let iGraphicsMode = dv.getUint32(offset, true); offset += 4;
+				let exScale = dv.getFloat32(offset, true); offset += 4;
+				let eyScale = dv.getFloat32(offset, true); offset += 4;
+				let dy = dv.getInt32(offset, true); offset += 4;
+				let dx = dv.getInt32(offset, true); offset += 4;
+				let count = dv.getUint32(offset, true); offset += 4;
+				let offString = dv.getUint32(offset, true); offset += 4;
+				let Options = dv.getUint32(offset, true); offset += 4;
+				let x = toAbsoluteX(dv.getInt32(offset, true), ww, wx, mx, wox, wsx); offset += 4;
+				let y = toAbsoluteY(dv.getInt32(offset, true), wh, wy, my, woy, wsy); offset += 4;
+				let w = toAbsoluteY(dv.getInt32(offset, true), wh, wy, my, woy, wsy); offset += 4;
+				let h = toAbsoluteX(dv.getInt32(offset, true), ww, wx, mx, wox, wsx); offset += 4;
+				let offDx = dv.getUint32(offset, true); offset += 4;
+				
+				offset = offset_bk + offString;
+				
+				let buffer = new Buffer(count * 2);
+				for (let i = 0; i < count * 2; i++) {
+					let c = dv.getInt8(offset++, true);
+					buffer[i] = c;
+				}
+				charset = getCharset(charset);
+				let text = Icnov.decode(buffer, "utf16").replace(/\u0000/g, "");
+				ctx.fillText(text, x, y);
+				
+				console.log("EMR_EXTTEXTOUTW " + JSON.stringify({"x": x, "y": y, "count": count, "text": text}));
 				break;
 			}
 			case EMR_POLYBEZIER16: {
@@ -868,7 +967,29 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 				break;
 			}
 			case EMR_EXTCREATEPEN: {
-				console.log("EMR_EXTCREATEPEN");
+				
+				let ihPen = dv.getUint32(offset, true); offset += 4;
+				
+				let offBmi = dv.getUint32(offset, true); offset += 4;
+				let cbBmi = dv.getUint32(offset, true); offset += 4;
+				let offBits = dv.getUint32(offset, true); offset += 4;
+				let cbBits = dv.getUint32(offset, true); offset += 4;
+				
+				let style = dv.getUint32(offset, true); offset += 4;
+				let width = dv.getInt32(offset, true); offset += 4;
+				let BrushStyle = dv.getInt32(offset, true); offset += 4;
+				let color = Int32ToHexColor(dv.getInt32(offset, true)); offset += 4;
+				let BrushHatch = dv.getInt32(offset, true); offset += 4;
+				let NumStyleEntries = dv.getInt32(offset, true); offset += 4;
+				
+				insertObjToFirstNull(objs, {
+					"type"  : "PEN_EXT",
+					"style" : style,
+					"color" : color,
+					"width" : width
+				});
+				
+				console.log("EMR_EXTCREATEPEN " + JSON.stringify({ihPen, style, width, color}));
 				break;
 			}
 			case EMR_POLYTEXTOUTA: {
