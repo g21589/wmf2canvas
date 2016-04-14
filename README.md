@@ -2,7 +2,7 @@ wmf2canvas
 ==========
 [![MIT License][license-image]][license-url]
 
-Convert WMF (Windows Metafile) image file to HTML5 canvas
+Convert WMF (Windows Metafile) image file to HTML5 canvas by using pure javascript.
 
 Online Demo
 ----
@@ -31,7 +31,7 @@ file.onchange = function() {
 Version
 ----
 
-Bets test
+0.9.1
 
 
 License
