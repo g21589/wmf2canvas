@@ -406,22 +406,68 @@ EMFConverter.prototype.toCanvas = function(file, canvas, callback) {
 			throw new UserException("Invalid EMF file format.");
 		}
 		
+		offset_bk = offset;
+		
 		let HeaderSize = dv.getUint32(offset, true); offset += 4;
+		// EmfHeader (80 bytes)
+		let boundLeft = dv.getInt32(offset, true); offset += 4;
+		let boundTop = dv.getInt32(offset, true); offset += 4;
+		let boundRight = dv.getInt32(offset, true); offset += 4;
+		let boundBottom = dv.getInt32(offset, true); offset += 4;
+		console.log(JSON.stringify({boundLeft, boundTop, boundRight, boundBottom}));
+		let frameLeft = dv.getInt32(offset, true); offset += 4;
+		let frameTop = dv.getInt32(offset, true); offset += 4;
+		let frameRight = dv.getInt32(offset, true); offset += 4;
+		let frameBottom = dv.getInt32(offset, true); offset += 4;
+		console.log(JSON.stringify({frameLeft, frameTop, frameRight, frameBottom}));
+		let RecordSignature = dv.getUint32(offset, true); offset += 4;
+		let Version = dv.getUint32(offset, true); offset += 4;
+		let Bytes = dv.getUint32(offset, true); offset += 4;
+		let Records = dv.getUint32(offset, true); offset += 4;
+		let Handles = dv.getUint16(offset, true); offset += 2;
+		let Reserved = dv.getUint16(offset, true); offset += 2; // MUST be 0x0000 and MUST be ignored
+		let nDescription = dv.getUint32(offset, true); offset += 4;
+		let offDescription = dv.getUint32(offset, true); offset += 4;
+		let nPalEntries = dv.getUint32(offset, true); offset += 4;
+		let DeviceCX = dv.getUint32(offset, true); offset += 4;
+		let DeviceCY = dv.getUint32(offset, true); offset += 4;
+		let MillimetersCX = dv.getUint32(offset, true); offset += 4;
+		let MillimetersCY = dv.getUint32(offset, true); offset += 4;
+		
 		if (HeaderSize >= 108) {
 			console.info("EmfMetafileHeaderExtension2");
-			// EmfHeader (80 bytes)
+			
 			// EmfHeaderExtension1 (12 bytes)
+			let cbPixelFormat = dv.getUint32(offset, true); offset += 4;
+			let offPixelFormat = dv.getUint32(offset, true); offset += 4;
+			let bOpenGL = dv.getUint32(offset, true); offset += 4;
+			console.log(JSON.stringify({cbPixelFormat, offPixelFormat, bOpenGL}));
+			
 			// EmfHeaderExtension2 (8 bytes)
+			let MicrometersX = dv.getUint32(offset, true); offset += 4;
+			let MicrometersY = dv.getUint32(offset, true); offset += 4;
+			
 			// EmfDescriptionBuffer (variable)
 			// EmfDescription (variable)
+			
 		} else if (HeaderSize >= 100) {
 			console.info("EmfMetafileHeaderExtension1");
+			
+			// EmfHeaderExtension1 (12 bytes)
+			let cbPixelFormat = dv.getUint32(offset, true); offset += 4;
+			let offPixelFormat = dv.getUint32(offset, true); offset += 4;
+			let bOpenGL = dv.getUint32(offset, true); offset += 4;
+			console.log(JSON.stringify({cbPixelFormat, offPixelFormat, bOpenGL}));
+			
+			// EmfDescriptionBuffer (variable)
+			// EmfDescription (variable)
+
 		} else {
 			console.info("EmfMetafileHeader");
 		}
 		
 		// TODO
-		offset += HeaderSize - 4;
+		offset = offset_bk + HeaderSize;
 		
 		let objs = new Array(256);
 		for (let i = 0; i < 256; i++) {
