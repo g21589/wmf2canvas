@@ -10,7 +10,6 @@ var WMFConverter = function() {
 };
 
 WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
-	
 	let reader = new FileReader();
 	reader.onload = function (event) {
 		let t = performance.now();
@@ -349,6 +348,7 @@ WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 		let charset = 0;
 		let textColor = "#000";
 		let fillMode = "evenodd";
+		let currPos = {x:0, y:0}
 		
 		let key = dv.getUint32(offset, true); offset += 4;
 		if (key == 0x9AC6CDD7) {
@@ -531,6 +531,8 @@ WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 				let x = dv.getInt16(offset, true); offset += 2;
 				ctx.beginPath();
 				ctx.moveTo(x, y);
+				currPos.x = x
+				currPos.y = y
 				console.log("MoveTo (" + x + ", " + y + ")");
 				break;
 			}
@@ -1009,11 +1011,12 @@ WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 				}
 				let text = Icnov.decode(buffer, charset);
 				
-				/*
 				if (count % 2 == 1) {
 					dv.getInt8(offset++, true);
+					rsize -= (count + 1) / 2;
+				} else {
+					rsize -= (count) / 2;
 				}
-				rsize -= (count + 1) / 2;
 				
 				let dx = null;
 				if (rsize > 0) {
@@ -1023,10 +1026,17 @@ WMFConverter.prototype.toCanvas = function(filename, canvas, callback) {
 						offset += 2;
 					}
 				}
-				*/
+
 				let fillStyle_bk = ctx.fillStyle;
 				ctx.fillStyle = textColor;
-				ctx.fillText(text, x, y);
+				if(dx) {
+					for(let i = 0; i < text.length; i++) {
+						ctx.fillText(text[i], x + currPos.x, y + currPos.y);
+						currPos.x += dx[i]
+					}
+				} else {
+					ctx.fillText(text, x, y);
+				}
 				ctx.fillStyle = fillStyle_bk;
 				console.log("EXT_TEXT_OUT " + JSON.stringify({"x": x, "y": y, "count": count, "text": text}));
 				break;
